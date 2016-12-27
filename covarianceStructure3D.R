@@ -23,7 +23,9 @@ covarianceStructure3D <- setClass(
                                         "spherical",
                                         "power",
                                         "cubic",
-                                        "matern1"))){
+                                        "matern1",
+                                        "matern2",
+                                        "cauchy"))){
                         stop(paste0("Structure type '",object@type,
                                     "' not supported."))
                 }
@@ -34,9 +36,12 @@ covarianceStructure3D <- setClass(
                          object@minrange)) <= 0){
                         stop("All ranges must be greater than zero")
                 }
-                if(object@power < 0 || object@power > 2){
-                        stop("Power must be between 0 and 2")
-                }
+                if(object@type == "power")
+                        if(object@power <= 0 || object@power >= 2){
+                                stop("Power must be in the interval ]0,2[ for power function")
+                        }
+                if(object@type == "cauchy" && object@power <= 0)
+                        stop("Power must be positive for cauchy function")
                 return(TRUE)
         }
 )
@@ -358,24 +363,70 @@ setMethod(
                                 .Object@contribution * (1 + 5 * d) * exp(-5 * d)
                         }
                         .Object@covd1 <- function(u, v, dir1){
-                                # A <- .Object@asym
-                                # v1 <- t(A %*% t(v))
-                                # u1 <- t(A %*% t(u))
                                 .Object@contribution *
                                         covd1_matern1(u, v, dir1, .Object@asym)
-                                # .Object@contribution *
-                                #         covd1_matern1(u1, v1, dir1, diag(1, 3, 3))
                         }
                         .Object@covd2 <- function(u, v = u, dir1, dir2){
-                                # A <- .Object@asym
-                                # v1 <- t(A %*% t(v))
-                                # u1 <- t(A %*% t(u))
                                 .Object@contribution *
                                         covd2_matern1(u, v, dir1, dir2,
                                                     .Object@asym)
-                                # .Object@contribution *
-                                #         covd2_matern1(u1, v1, dir1, dir2,
-                                #                       diag(1, 3, 3))
+                        }
+                        .Object@varfun <- function(u, v = u){
+                                .Object@contribution - .Object@covfun(u, v)       
+                        }
+                        .Object@vard1 <- function(u, v, dir1){
+                                - .Object@covd1(u, v, dir1)       
+                        }
+                        .Object@vard2 <- function(u, v, dir1, dir2){
+                                - .Object@covd2(u, v, dir1, dir2)       
+                        }
+                }
+                else if(.Object@type == "matern2"){
+                        .Object@covfun <- function(u, v = u){
+                                A <- .Object@asym
+                                v1 <- t(A %*% t(v))
+                                u1 <- t(A %*% t(u))
+                                d <- vectorized_pdist(u1, v1)
+                                .Object@contribution * (1 + 5*d + 12*d^2) * exp(-6 * d)
+                        }
+                        .Object@covd1 <- function(u, v, dir1){
+                                .Object@contribution *
+                                        covd1_matern2(u, v, dir1, .Object@asym)
+                        }
+                        .Object@covd2 <- function(u, v = u, dir1, dir2){
+                                .Object@contribution *
+                                        covd2_matern2(u, v, dir1, dir2,
+                                                      .Object@asym)
+                        }
+                        .Object@varfun <- function(u, v = u){
+                                .Object@contribution - .Object@covfun(u, v)       
+                        }
+                        .Object@vard1 <- function(u, v, dir1){
+                                - .Object@covd1(u, v, dir1)       
+                        }
+                        .Object@vard2 <- function(u, v, dir1, dir2){
+                                - .Object@covd2(u, v, dir1, dir2)       
+                        }
+                }
+                else if(.Object@type == "cauchy"){
+                        .Object@covfun <- function(u, v){
+                                A <- .Object@asym
+                                v1 <- t(A %*% t(v))
+                                u1 <- t(A %*% t(u))
+                                beta <- 0.05^(-1/.Object@power) - 1
+                                d <- vectorized_pdist(u1, v1)
+                                .Object@contribution * (1+beta*d^2) ^ (- .Object@power)
+                        }
+                        .Object@covd1 <- function(u, v, dir1){
+                                .Object@contribution *
+                                        covd1_cauchy(u, v, dir1, .Object@asym,
+                                                     .Object@power)
+                        }
+                        .Object@covd2 <- function(u, v, dir1, dir2){
+                                .Object@contribution *
+                                        covd2_cauchy(u, v, dir1, dir2,
+                                                      .Object@asym,
+                                                      .Object@power)
                         }
                         .Object@varfun <- function(u, v = u){
                                 .Object@contribution - .Object@covfun(u, v)       

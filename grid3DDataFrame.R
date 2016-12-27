@@ -105,24 +105,24 @@ setMethod(
 )
 
 #### reScale ####
-setMethod(
-        f = "reScale",
-        signature = "grid3DDataFrame",
-        definition = function(object, 
-                              old_range = boundingBox(object), 
-                              new_range = matrix(rep(c(0,1),3),2,3)){
-                points_list <- getCoords(object)
-                df <- getData(object)
-                points_list <- lapply(
-                        points_list,
-                        function(x) reScale(x, old_range, new_range)
-                )
-                pts <- points3DDataFrame(points_list,df)
-                object@points <- points_list
-                object@bbox <- pts@bbox
-                return(object)
-        }
-)
+# setMethod(
+#         f = "reScale",
+#         signature = "grid3DDataFrame",
+#         definition = function(object, 
+#                               old_range = boundingBox(object), 
+#                               new_range = matrix(rep(c(0,1),3),2,3)){
+#                 points_list <- getCoords(object)
+#                 df <- getData(object)
+#                 points_list <- lapply(
+#                         points_list,
+#                         function(x) reScale(x, old_range, new_range)
+#                 )
+#                 pts <- points3DDataFrame(points_list,df)
+#                 object@points <- points_list
+#                 object@bbox <- pts@bbox
+#                 return(object)
+#         }
+# )
 
 #### drawSection ####
 setMethod(

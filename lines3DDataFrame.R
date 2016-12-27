@@ -7,18 +7,18 @@ lines3DDataFrame <- setClass(
                     nrow(object@data)) {
                         stop(
                                 paste(
-                                        "Number of line3D objects does not",
+                                        "Number of coordinates does not",
                                         "match number of observations"
                                 )
                         )
                 }
-                if (!all(rapply(object@coords,class) == "line3D")) {
+                if (!all(rapply(object@coords,class) == "numeric")) {
                         stop(
                                 paste(
                                         "Invalid object in",
                                         "lines list. All",
                                         "objects must be of",
-                                        "class 'line3D'"
+                                        "class 'numeric'"
                                 )
                         )
                 }
@@ -40,6 +40,7 @@ setMethod(
                         apply(lines_df,2,min),
                         apply(lines_df,2,max)))
                 rownames(bbox) <- c("min","max")
+                # colnames(bbox) <- c("X","Y","Z")
                 .Object@bbox <- bbox
                 validObject(.Object)
                 return(.Object)
@@ -55,21 +56,23 @@ setMethod(
                         return(object@coords)
                 }else if(as == "data.frame"){
                         lines_list <- object@coords
-                        df <- matrix(nrow = length(lines_list), ncol = 6)
-                        for(i in seq(length(lines_list))){
-                                coords <- getCoords(lines_list[[i]])
-                                df[i,] <- cbind(coords[1,], coords[2,])
-                        }
+                        # df <- matrix(nrow = length(lines_list), ncol = 6)
+                        # for(i in seq(length(lines_list))){
+                        #         coords <- getCoords(lines_list[[i]])
+                        #         df[i,] <- cbind(coords[1,], coords[2,])
+                        # }
+                        df <- t(sapply(lines_list, function(x) x))
                         df <- as.data.frame(df)
                         colnames(df) <- c("X.1","Y.1","Z.1","X.2","Y.2","Z.2")
                         return(df)
                 }else if(as == "matrix"){
                         lines_list <- object@coords
-                        df <- matrix(nrow = length(lines_list), ncol = 6)
-                        for(i in seq(length(lines_list))){
-                                coords <- getCoords(lines_list[[i]])
-                                df[i,] <- cbind(coords[1,], coords[2,])
-                        }
+                        # df <- matrix(nrow = length(lines_list), ncol = 6)
+                        # for(i in seq(length(lines_list))){
+                        #         coords <- getCoords(lines_list[[i]])
+                        #         df[i,] <- cbind(coords[1,], coords[2,])
+                        # }
+                        df <- t(sapply(lines_list, function(x) x))
                         colnames(df) <- c("X.1","Y.1","Z.1","X.2","Y.2","Z.2")
                         return(df)
                 }else{
@@ -85,7 +88,11 @@ setMethod(
         signature = "lines3DDataFrame",
         definition = function(object){
                 lines_list <- getCoords(object)
-                return(sapply(lines_list, getLength))
+                l <- sapply(lines_list, function(x){
+                        sqrt(sum((x[1:3] - x[4:6])^2))
+                })
+                return(l)
+                # return(sapply(lines_list, getLength))
         }
 )
 
@@ -123,19 +130,35 @@ setMethod(
                         stop("locations must contain values between 0 and 1,
                              inclusive")
                 }
+                
+                # function to break line into points
+                break_line <- function(line, locations){
+                        lstart <- line[1:3]
+                        lend <- line[4:6]
+                        ldif <- lend - lstart
+                        points_list <- vector("list", length(locations))
+                        for(i in seq_along(locations)){
+                                points_list[[i]] <- lstart + locations[i] * ldif
+                        }
+                        return(points_list)
+                }
+                
+                
+                
                 # conversion to points3DDataFrame
                 r <- length(locations)
                 n <- nrow(object)
                 d <- numeric(n * r)
                 points_list <- vector("list", n * r)
                 lines_list <- getCoords(object)
+                l <- getLength(object)
                 df <- getData(object)
                 for(i in seq_len(n)){
                         points_list[(r*(i-1)+1):(i*r)] <- 
-                                pointify(lines_list[[i]], locations)
+                                break_line(lines_list[[i]], locations)
                         d[(r*(i-1)+1):(i*r)] <- apply(rbind(
-                                getLength(lines_list[[i]]) * locations,
-                                getLength(lines_list[[i]]) * (1-locations)
+                                l[i] * locations,
+                                l[i] * (1-locations)
                         ), 2, min)
                 }
                 df <- df[rep(seq(n), each = r),,drop=F]
@@ -145,21 +168,21 @@ setMethod(
 )
 
 #### reScale ####
-setMethod(
-        f = "reScale",
-        signature = "lines3DDataFrame",
-        definition = function(object, 
-                              old_range = boundingBox(object), 
-                              new_range = matrix(rep(c(0,1),3),2,3)){
-                lines_list <- getCoords(object)
-                df <- getData(object)
-                lines_list <- lapply(
-                        lines_list,
-                        function(x) reScale(x, old_range, new_range)
-                )
-                return(lines3DDataFrame(lines_list,df))
-        }
-)
+# setMethod(
+#         f = "reScale",
+#         signature = "lines3DDataFrame",
+#         definition = function(object, 
+#                               old_range = boundingBox(object), 
+#                               new_range = matrix(rep(c(0,1),3),2,3)){
+#                 lines_list <- getCoords(object)
+#                 df <- getData(object)
+#                 lines_list <- lapply(
+#                         lines_list,
+#                         function(x) reScale(x, old_range, new_range)
+#                 )
+#                 return(lines3DDataFrame(lines_list,df))
+#         }
+# )
 
 #### drawDrillholes ####
 setMethod(
@@ -194,7 +217,7 @@ setMethod(
                 # plotting
                 for(i in seq(N)){
                         shade3d(
-                                cylinder3d(getCoords(lines_list[[i]]),
+                                cylinder3d(rbind(lines_list[[i]][1:3],lines_list[[i]][4:6]),
                                            sides = 16, radius = size[i]/2, 
                                            closed = -2),
                                 col = colorsc[i])
@@ -308,7 +331,11 @@ setMethod(
                         l <- length(merge_ids[[i]])
                         id_start <- merge_ids[[i]][1]
                         id_end <- merge_ids[[i]][l]
-                        lines_list2[[i]] <- line3D(
+                        # lines_list2[[i]] <- line3D(
+                        #         line_coords[id_start,1:3],
+                        #         line_coords[id_end,4:6]
+                        # )
+                        lines_list2[[i]] <- c(
                                 line_coords[id_start,1:3],
                                 line_coords[id_end,4:6]
                         )
@@ -381,120 +408,120 @@ setMethod(
 )
 
 #### classify ####
-setMethod(
-        f = "classify",
-        signature = c("lines3DDataFrame", "points3DDataFrame"),
-        definition = function(x, y, by, model, nugget, trend = "~ x + y + z", 
-                              prob = F, uncertainty = F, indicators = T,
-                              verbose = T,
-                              ortho = NULL, dip = "Dip", strike = "Strike"){
-                # setup
-                xdata <- getData(x)
-                ydata <- getData(y)
-                categories <- unique(xdata[,by])
-                ncat <- length(categories)
-                indmat <- matrix(NA, nrow(y), ncat) # indicators
-                varmat <- matrix(NA, nrow(y), ncat) # kriging variance
-                # indicator kriging
-                for(item in categories){
-                        x[".ind"] <- -1 # negative
-                        x[getData(x[by]) == item, ".ind"] <- 1 # positive
-                        xmerge <- mergeSegments(x, by = ".ind", 
-                                                keep = character(0))
-                        xmerge[".nugget"] <- 1
-                        contacts <- getContacts(xmerge, by = ".ind")
-                        contacts[".nugget"] <- 0 # no regularization on contacts
-                        contacts[".ind"] <- 0
-                        xp <- pointify(xmerge, 
-                                       c(0.01,0.05,seq(0.1,0.9,0.2),0.95,0.99))
-                        pointdata <- bindPoints(xp, contacts)
-                        pnugget <- getData(pointdata[".nugget"]) * nugget
-                        pnugget <- unlist(pnugget)
-                        if(verbose){
-                                cat("Classifying ", by, ": " ,item, " ... ", 
-                                    sep = "")
-                        }
-                        tempgr <- krig3D(pointdata, y, model = model,
-                                         value = ".ind", nugget = pnugget,
-                                         trend = trend, l1 = l1,
-                                         krigvar = T, verbose = verbose,
-                                         ortho = ortho, dip = dip, 
-                                         strike = strike)
-                        indmat[, which(categories == item)] <-
-                                unlist(getData(tempgr[".ind"]))
-                        varmat[, which(categories == item)] <-
-                                unlist(getData(tempgr[".ind.krigvar"]))
-                }
-                # classification (one vs all)
-                code_matrix <- matrix(-1,ncat,ncat) + diag(2,ncat,ncat)
-                indmat <- indmat %*% code_matrix
-                probmat <- apply(indmat, 1, function(rw){
-                        # randomly breaking ties
-                        rw <- rw + rnorm(length(rw), sd = 1e-6) 
-                        exp(rw) / sum(exp(rw))
-                })
-                probmat <- t(probmat)
-                ids <- apply(probmat, 1, which.max)
-                # output
-                ydata[,by] <- categories[ids]
-                if(prob){
-                        colnames(probmat) <- paste0(by,"..",
-                                                    make.names(categories),
-                                                    ".prob")
-                        ydata[,colnames(probmat)] <- as.data.frame(probmat)
-                }
-                if(indicators){
-                        # distance from border calculated from probabilities
-                        indmat <- t(apply(probmat, 1, function(x){
-                                y <- log(x)
-                                ysort <- sort(y, decreasing = T)
-                                y - mean(ysort[1:2])
-                        }))
-                        inddf <- data.frame(indmat)
-                        colnames(inddf) <- paste0(by,"..",
-                                                  make.names(categories),".ind")
-                        ydata[,colnames(inddf)] <- inddf
-                }
-                if(uncertainty){
-                        entropy <- -rowSums(probmat * log(probmat))/log(ncat)
-                        avgvar <- rowMeans(varmat)
-                        u <- sqrt((1+entropy)*(1+avgvar)) -1
-                        ydata[, paste0(by,"..uncertainty")] <- u
-                }
-                y@data <- ydata
-                return(y)
-        }
-)
-
-setMethod(
-        f = "classify",
-        signature = c("lines3DDataFrame","missing"),
-        definition = function(x, by, model, nugget, trend = "~ x + y + z",  
-                              discretization = seq(0.2,0.8,0.2),
-                              verbose = TRUE, 
-                              ortho = NULL, dip = "Dip", strike = "Strike"){
-                # setup
-                xdata <- getData(x)
-                y <- pointify(mergeSegments(x, by, keep=character(0)), 
-                              discretization)
-                ydata <- getData(y)
-                categories <- unique(xdata[,by])
-                ncat <- length(categories)
-                # cross-validation
-                catcalc <- character(nrow(y))
-                for(hole in unique(xdata[,"HOLEID"])){
-                        if(verbose) cat("Cross validating hole",hole,"\n")
-                        xids <- xdata[,"HOLEID"] != hole
-                        yids <- ydata[,"HOLEID"] == hole
-                        xtemp <- x[xids,]
-                        ytemp <- y[yids,]
-                        ytemp <- classify(xtemp,ytemp, by = by, model = model,
-                                          nugget = nugget, trend = trend, l1 = l1,
-                                          verbose = verbose, ortho = ortho,
-                                          dip = dip, strike = strike)
-                        catcalc[yids] <- unlist(getData(ytemp[by]))
-                }
-                cv <- mean(catcalc == ydata[,by])
-                return(cv)
-        }
-)
+# setMethod(
+#         f = "classify",
+#         signature = c("lines3DDataFrame", "points3DDataFrame"),
+#         definition = function(x, y, by, model, nugget, trend = "~ x + y + z", 
+#                               prob = F, uncertainty = F, indicators = T,
+#                               verbose = T,
+#                               ortho = NULL, dip = "Dip", strike = "Strike"){
+#                 # setup
+#                 xdata <- getData(x)
+#                 ydata <- getData(y)
+#                 categories <- unique(xdata[,by])
+#                 ncat <- length(categories)
+#                 indmat <- matrix(NA, nrow(y), ncat) # indicators
+#                 varmat <- matrix(NA, nrow(y), ncat) # kriging variance
+#                 # indicator kriging
+#                 for(item in categories){
+#                         x[".ind"] <- -1 # negative
+#                         x[getData(x[by]) == item, ".ind"] <- 1 # positive
+#                         xmerge <- mergeSegments(x, by = ".ind", 
+#                                                 keep = character(0))
+#                         xmerge[".nugget"] <- 1
+#                         contacts <- getContacts(xmerge, by = ".ind")
+#                         contacts[".nugget"] <- 0 # no regularization on contacts
+#                         contacts[".ind"] <- 0
+#                         xp <- pointify(xmerge, 
+#                                        c(0.01,0.05,seq(0.1,0.9,0.2),0.95,0.99))
+#                         pointdata <- bindPoints(xp, contacts)
+#                         pnugget <- getData(pointdata[".nugget"]) * nugget
+#                         pnugget <- unlist(pnugget)
+#                         if(verbose){
+#                                 cat("Classifying ", by, ": " ,item, " ... ", 
+#                                     sep = "")
+#                         }
+#                         tempgr <- krig3D(pointdata, y, model = model,
+#                                          value = ".ind", nugget = pnugget,
+#                                          trend = trend, l1 = l1,
+#                                          krigvar = T, verbose = verbose,
+#                                          ortho = ortho, dip = dip, 
+#                                          strike = strike)
+#                         indmat[, which(categories == item)] <-
+#                                 unlist(getData(tempgr[".ind"]))
+#                         varmat[, which(categories == item)] <-
+#                                 unlist(getData(tempgr[".ind.krigvar"]))
+#                 }
+#                 # classification (one vs all)
+#                 code_matrix <- matrix(-1,ncat,ncat) + diag(2,ncat,ncat)
+#                 indmat <- indmat %*% code_matrix
+#                 probmat <- apply(indmat, 1, function(rw){
+#                         # randomly breaking ties
+#                         rw <- rw + rnorm(length(rw), sd = 1e-6) 
+#                         exp(rw) / sum(exp(rw))
+#                 })
+#                 probmat <- t(probmat)
+#                 ids <- apply(probmat, 1, which.max)
+#                 # output
+#                 ydata[,by] <- categories[ids]
+#                 if(prob){
+#                         colnames(probmat) <- paste0(by,"..",
+#                                                     make.names(categories),
+#                                                     ".prob")
+#                         ydata[,colnames(probmat)] <- as.data.frame(probmat)
+#                 }
+#                 if(indicators){
+#                         # distance from border calculated from probabilities
+#                         indmat <- t(apply(probmat, 1, function(x){
+#                                 y <- log(x)
+#                                 ysort <- sort(y, decreasing = T)
+#                                 y - mean(ysort[1:2])
+#                         }))
+#                         inddf <- data.frame(indmat)
+#                         colnames(inddf) <- paste0(by,"..",
+#                                                   make.names(categories),".ind")
+#                         ydata[,colnames(inddf)] <- inddf
+#                 }
+#                 if(uncertainty){
+#                         entropy <- -rowSums(probmat * log(probmat))/log(ncat)
+#                         avgvar <- rowMeans(varmat)
+#                         u <- sqrt((1+entropy)*(1+avgvar)) -1
+#                         ydata[, paste0(by,"..uncertainty")] <- u
+#                 }
+#                 y@data <- ydata
+#                 return(y)
+#         }
+# )
+# 
+# setMethod(
+#         f = "classify",
+#         signature = c("lines3DDataFrame","missing"),
+#         definition = function(x, by, model, nugget, trend = "~ x + y + z",  
+#                               discretization = seq(0.2,0.8,0.2),
+#                               verbose = TRUE, 
+#                               ortho = NULL, dip = "Dip", strike = "Strike"){
+#                 # setup
+#                 xdata <- getData(x)
+#                 y <- pointify(mergeSegments(x, by, keep=character(0)), 
+#                               discretization)
+#                 ydata <- getData(y)
+#                 categories <- unique(xdata[,by])
+#                 ncat <- length(categories)
+#                 # cross-validation
+#                 catcalc <- character(nrow(y))
+#                 for(hole in unique(xdata[,"HOLEID"])){
+#                         if(verbose) cat("Cross validating hole",hole,"\n")
+#                         xids <- xdata[,"HOLEID"] != hole
+#                         yids <- ydata[,"HOLEID"] == hole
+#                         xtemp <- x[xids,]
+#                         ytemp <- y[yids,]
+#                         ytemp <- classify(xtemp,ytemp, by = by, model = model,
+#                                           nugget = nugget, trend = trend, l1 = l1,
+#                                           verbose = verbose, ortho = ortho,
+#                                           dip = dip, strike = strike)
+#                         catcalc[yids] <- unlist(getData(ytemp[by]))
+#                 }
+#                 cv <- mean(catcalc == ydata[,by])
+#                 return(cv)
+#         }
+# )

@@ -34,9 +34,9 @@ setGeneric("pointify",
            function(object, ...){standardGeneric("pointify")}
 )
 
-setGeneric("reScale",
-           function(object, ...){standardGeneric("reScale")}
-)
+# setGeneric("reScale",
+#            function(object, ...){standardGeneric("reScale")}
+# )
 
 setGeneric("make3DArray",
            function(object, ...){standardGeneric("make3DArray")}
@@ -92,25 +92,25 @@ setGeneric("trend_matrix_d1",
            function(x, trend, ...){standardGeneric("trend_matrix_d1")}
 )
 
-setGeneric("krig3D",
-           function(x, y, ...){standardGeneric("krig3D")}
-)
+# setGeneric("krig3D",
+#            function(x, y, ...){standardGeneric("krig3D")}
+# )
+# 
+# setGeneric("krig3D_search",
+#            function(x, y, ...){standardGeneric("krig3D_search")}
+# )
+# 
+# setGeneric("krig3D_cluster",
+#            function(x, y, ...){standardGeneric("krig3D_cluster")}
+# )
 
-setGeneric("krig3D_search",
-           function(x, y, ...){standardGeneric("krig3D_search")}
-)
+# setGeneric("smoothingPenalty",
+#            function(object, ...){standardGeneric("smoothingPenalty")}
+# )
 
-setGeneric("krig3D_cluster",
-           function(x, y, ...){standardGeneric("krig3D_cluster")}
-)
-
-setGeneric("smoothingPenalty",
-           function(object, ...){standardGeneric("smoothingPenalty")}
-)
-
-setGeneric("classify",
-           function(x, y, ...){standardGeneric("classify")}
-)
+# setGeneric("classify",
+#            function(x, y, ...){standardGeneric("classify")}
+# )
 
 # setGeneric("classify_ps",
 #            function(x, y, ...){standardGeneric("classify_ps")}
@@ -140,4 +140,12 @@ setGeneric("drawTangentLines",
 
 setGeneric("drawHoleID",
            function(object, ...){standardGeneric("drawHoleID")}
+)
+
+#### GP objects ####
+setGeneric("fit",
+           function(object, ...){standardGeneric("fit")}
+)
+setGeneric("fit_gating",
+           function(object, ...){standardGeneric("fit_gating")}
 )

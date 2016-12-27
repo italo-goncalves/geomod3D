@@ -64,6 +64,7 @@ setMethod(
         f = "[",
         signature = "spatial3DDataFrame",
         definition = function(x,i,j,drop){
+                if(missing(i)) i <- seq(nrow(x))
                 if(class(i) == "character"){
                         j <- i
                         i <- seq(nrow(x))
@@ -82,20 +83,29 @@ setMethod(
         f = "[<-",
         signature = "spatial3DDataFrame",
         definition = function(x, i, j, value, drop){
+                # checks
+                if(missing(i)) i <- seq(nrow(x))
                 if(class(i) == "character"){
                         j <- i
                         i <- seq(nrow(x))
                 }
+                if(class(j) != "character")
+                        stop(paste("Columns in", class(x),
+                                   "must be referenced by name"))
                 if(class(value) %in% c("spatial3DDataFrame",
                                        "points3DDataFrame",
                                        "lines3DDataFrame")){
                         value <- getData(value)
                 }
-                # coords_list <- getCoords(x)
+                if(!is.null(dim(value)) & class(value) != "data.frame")
+                        value <- as.matrix(value)
+                # standardization as data frame
+                value <- data.frame(value)
+                colnames(value) <- j
                 df <- getData(x)
-                df[i,j] <- value
-                # return(points3DDataFrame(points_list, df))
-                # return(new(class(x), coords_list, df))
+                # to avoid nasty bug
+                for(k in j) df[i,k] <- value[,k]
+                # output
                 x@data <- df
                 return(x)
         }
@@ -157,6 +167,7 @@ setMethod(
                 # result
                 vecs <- as.data.frame(rbind(dipvec, strvec))
                 colnames(vecs) <- c("dX", "dY", "dZ")
+                vecs$reg <- 1e-9 # used for kriging later
                 coords <- getCoords(object)
                 coords <- c(coords, coords)
                 return(new(class(object), coords, vecs))
@@ -181,6 +192,7 @@ setMethod(
                 # result
                 dipvec <- as.data.frame(dipvec)
                 colnames(dipvec) <- c("dX", "dY", "dZ")
+                dipvec$reg <- 1e-9 # used for kriging later
                 coords <- getCoords(object)
                 return(new(class(object), coords, dipvec))
         }

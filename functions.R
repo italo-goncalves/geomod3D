@@ -14,14 +14,19 @@ df_to_lines <- function(collar, assay, survey = NULL,
         
         # processing data    
         df <- merge(collar, assay, by=holeid)
-        lines_list <- list()
+        lines_list <- vector("list", nrow(df))
         if(is.null(survey)){
                 for(i in seq(nrow(df))){
-                        lines_list[[i]] <- line3D(
+                        # lines_list[[i]] <- line3D(
+                        #         df[i, c(X,Y,Z)] - c(0,0,df[i,from]),
+                        #         df[i, c(X,Y,Z)] - c(0,0,df[i,to]) 
+                        # )
+                        lines_list[[i]] <- c(
                                 df[i, c(X,Y,Z)] - c(0,0,df[i,from]),
-                                df[i, c(X,Y,Z)] - c(0,0,df[i,to]) 
+                                df[i, c(X,Y,Z)] - c(0,0,df[i,to])
                         )
                 }
+                lines_list <- lapply(lines_list, unlist)
         }else{
                 # fazer survey aqui
                 stop("Survey data not supported yet")
@@ -45,6 +50,7 @@ get_Google_Elevation <- function(lat, long, key){
         baseURL <- "https://maps.googleapis.com/maps/api/elevation/json?locations="
         
         # conversion to character vector
+        if(Ncells > 1){
         lat_long_str <- character(Ncells)
         for (i in 1:(Ncells-1)){
                 lat_long_str[i] <- 
@@ -55,6 +61,8 @@ get_Google_Elevation <- function(lat, long, key){
         lat_long_str[Ncells] <- paste(lat[-(1:(i*base_int))],
                                       long[-(1:(i*base_int))],
                                       sep = ",", collapse = "|")
+        }
+        else lat_long_str <- paste(lat, long, sep = ",", collapse = "|")
         
         # request to Google Elevation API
         elev <- data.frame()
@@ -64,7 +72,7 @@ get_Google_Elevation <- function(lat, long, key){
                 json <- fromJSON(
                         content(GET(url), as = "text"), 
                         simplifyDataFrame = T)
-                cat("Request",i,"of",Ncells,"- Status =",json$status)
+                cat("Request",i,"of",Ncells,"- Status =",json$status, "\n")
                 if(json$status == "OK"){
                         gdata <- as.data.frame(json$results)
                         gdata <- tbl_df(data.frame(gdata$location, 

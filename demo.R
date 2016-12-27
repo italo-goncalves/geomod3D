@@ -4,21 +4,23 @@
 ## Before running this script, make sure to download all source files and
 ## unzip the data file. The code assumes everything is in the same folder.
 ##
+## The sample data was exported from the SCAT module of software Move, which is 
+## available for universities and research institutions through the Academic 
+## Software Initiative (ASI). The data should be used only within this script.
+##
 ## It is recommended to run the script line by line in order to see what
 ## happens at each step.
 
 #### Packages ####
 library(rgl)
 library(misc3d)
-library(GA)
 library(Rcpp)
 library(Matrix)
+library(ggplot2)
 
 #### Project's source files ####
 sourceCpp("covC.cpp")
 source('generics.R')
-source('point3D.R')
-source('line3D.R')
 source('spatial3DDataFrame.R')
 source('points3DDataFrame.R')
 source('lines3DDataFrame.R')
@@ -33,7 +35,8 @@ source('GP_LR.R')
 # set working directory to the source files location
 
 # opening data
-holes <- read.csv("data.csv", sep = ";", stringsAsFactors = F)
+holes <- read.csv(unz("data.zip", "data.csv"), 
+                  sep = ";", stringsAsFactors = F)
 
 # a separate data frame is created which contains only the orientation data
 dips <- holes[!is.na(holes$Dip),]
@@ -63,44 +66,74 @@ dipdata
 dipvec <- getPlaneDirections(dipdata)
 dipvec
 
-#### Model training with a genetic algorithm ####
-# A genetic algorithm is used to find the parameters with best the fit to 
-# the data. The parameters are the covariance function's amplitude, range
-# in the horizontal direction, range in the vertical direction (encoded as
-# a multiple of the horizontal range), and the nugget or noise parameter.
+#### Model training ####
+# The model's parameters (range and nugget effect) are found by maximizing
+# the log-likelihood, as there are only two parameters, it suffices to do
+# a grid search and plot the results. If one chooses to work with more 
+# parameters (anisotropy, different parameters for each class, etc.), a
+# more complex training method must be used.
 #
 # The covariance function is encoded in the "covarianceStructure3D" object.
 # The model itself is the "GP_LR" object (Gaussian Process for Logistic
 # Regression). It contains a separate Gaussian Process for each class and
 # takes the covariance function and nugget as inputs, as well as the point
-# and directional data. The fitness function to be maximized is the model's
-# log-likelihood.
-#
-# This part can take some time.
-fit <- function(x) {
-        m <- covarianceStructure3D("gaussian", x[1], x[2], x[2], x[2]*x[3])
-        gp <- GP_LR(pointdata, value1 = "Horizon.up", value2 = "Horizon.down",
-                      model = m, strength = 1, nugget = x[4],
-                      tangents = dipvec, reg.t = 1e-8)
-        return(logLik(gp))
+# and directional data. Valid covariances are the Gaussian and cubic functions.
+# The Matérn class is also supported but did not gave good results with this 
+# dataset.
+
+# The following function plots the grid search results
+plot_lik <- function(r, nug, lik){
+        df <- data.frame(
+                r = rep(r, times = length(nug)),
+                nug = rep(nug, each = length(r)),
+                lik = as.numeric(lik)
+        )
+        ggplot(df) + geom_tile(aes(x=r, y=nug, fill=lik)) + 
+                scale_fill_gradientn(colours = rev(colorRamps::matlab.like2(20)),
+                                     name = "Log-likelihood") +
+                scale_x_continuous(labels = r, breaks = r, expand = c(0,0),
+                                   name = "Range") + 
+                scale_y_continuous(labels = nug, breaks = nug, expand = c(0,0)) + 
+                ylab(expression(~sigma[0]^2))
 }
-GA <- ga(type = "real-valued", fitness = fit,
-         min = c(0.1, 100, 0.1, 0.05),
-         max = c(5, 1000, 1, 5), pmutation = 0.3,
-         popSize = 20, run = 10, monitor = T,
-         names = c("amplitude", "range", "rmult","nugget"))
-summary(GA)
+
+# The amplitude parameter can be fixed
+s12 <- 33^2/(16*32^2)
+
+# grid search parameters
+r <- seq(100,1000,100) # ranges to test
+nug <- seq(0.02, 0.3, 0.02) # nugget values to test
+lik <- matrix(nrow = length(r), ncol = length(nug)) # matrix to store the results
+
+# covariance function (one of "gaussian", "cubic", "matern1", or "matern2")
+covfun <- "gaussian"
+
+# This part can take some time
+for(i in seq_along(r)){
+        for(j in seq_along(nug)){
+                lik[i,j] <- logLik(GP_LR(pointdata, "Horizon.up", "Horizon.down", 
+                                         model = covarianceStructure3D(
+                                                 type = covfun, 
+                                                 contribution = s12, 
+                                                 maxrange = r[i]), 
+                                         nugget = nug[j], 
+                                         tangents = dipvec, 
+                                         reg.t = 1e-8))
+        }
+}
+plot_lik(r, nug, lik)
+
 
 #### Final model and prediction ####
-# The model is built using the best fit parameters from the code above.
+# The model is built using a combination of parameters from the plot above.
 # For reproducibility, the parameters used in the paper are provided.
-m <- covarianceStructure3D("gaussian", 0.65, 332, 332, 146)
+# (reg.t is the regularization parameter for the tangent data)
+m <- covarianceStructure3D("gaussian", s12, 900)
 m
 gp <- GP_LR(pointdata, value1 = "Horizon.up", value2 = "Horizon.down", 
-            strength = 1, model = m, nugget = 0.59, tangents = dipvec, 
-            reg.t = 1e-8)
+            model = m, nugget = 0.22, tangents = dipvec, reg.t = 1e-8)
 gp
-logLik(gp)
+
 
 # A regular, empty 3D grid is initialized
 gr <- grid3DDataFrame(gridx = seq(-10100, -9700, 10), 
@@ -108,7 +141,7 @@ gr <- grid3DDataFrame(gridx = seq(-10100, -9700, 10),
                       gridz = seq(-1000, 100, 10), 
                       fields = "Horizon")
 # It is then overwritten with the model's prediction (this can be slow)
-gr <- predict(gp, gr, to = "Horizon", output.unc = T)
+gr <- predict(gp, gr, to = "Horizon")
 gr
 
 #### Visualization of data and results ####
@@ -139,31 +172,9 @@ for(i in 0:30){
                   color = hcol[i+1], alpha = 1, add=T)
 }
 
-# Visualization of uncertainty (relative predictive standard deviation)
-# The "[[" extracts a single variable from the grid
-hist(gr[["Horizon..uncertainty"]])
-
-# Uncertainty contouring
-unc <- make3DArray(gr, "Horizon..uncertainty")
-contour3d(unc$value, level = c(0.5,0.75,0.99), 
-          x = unc$x, y = unc$y, z = unc$z, 
-          color = c("green", "yellow", "red"), alpha = 0.5, add=T)
-
-# Model constrained by an uncertainty threshold
-thr <- 0.75
-mask <- unc$value <= thr
-for(i in 0:30){
-        hor <- make3DArray(gr, paste0("Horizon..Horizon_", 
-                                      sprintf("%02d", i),".ind"))
-        contour3d(hor$value, level = 0, x = hor$x, y = hor$y, z = hor$z, 
-                  color = hcol[i+1], alpha = 1, add=T, mask = mask)
-}
-contour3d(unc$value, level = thr, 
-          x = unc$x, y = unc$y, z = unc$z, 
-          color = "gray50", alpha = 0.5, add=T)
 
 # Reference surfaces
-load("ref.Rdata")
+load(unz("data.zip", "ref.Rdata"))
 for(i in 1:31){
         persp3d(sup[[i]]$x, sup[[i]]$y, sup[[i]]$value, add = T, col = hcol[i],
                 xlim = c(-10100,-9700), ylim = c(-3800,-3200), 

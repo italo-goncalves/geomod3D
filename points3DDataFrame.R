@@ -7,18 +7,18 @@ points3DDataFrame <- setClass(
                     nrow(object@data)) {
                         stop(
                                 paste(
-                                        "Number of point3D objects does not",
+                                        "Number of coordinates does not",
                                         "match number of observations"
                                 )
                         )
                 }
-                if (!all(rapply(object@coords,class) == "point3D")) {
+                if (!all(rapply(object@coords,class) == "numeric")) {
                         stop(
                                 paste(
                                         "Invalid object in",
                                         "points list. All",
                                         "objects must be of",
-                                        "class 'point3D'"
+                                        "class 'numeric'"
                                 )
                         )
                 }
@@ -32,11 +32,20 @@ setMethod(
         definition = function(.Object, coords, df){
                 if(class(coords) %in% c("matrix", "Matrix", "data.frame", 
                                         "tbl_df")) {
-                        if(!(ncol(coords) %in% c(2,3)))
+                        coords <- as.matrix(coords)
+                        # enforcing 3D
+                        if(ncol(coords) > 3)
                                 stop("Invalid number of dimensions")
-                        coords <- apply(coords, 1, function(x) point3D(x))
+                        coords <- cbind(coords, matrix(0, nrow(coords), 
+                                                       3 - ncol(coords)))
+                        # coords <- apply(coords, 1, function(x) point3D(x))
+                        # making list
+                        coords <- apply(coords, 1, function(x) list(x))
+                        coords <- lapply(coords, unlist)
                         .Object@coords <- coords
                 }else if(class(coords) == "list"){
+                        if(!(all(sapply(coords, length) == 3)))
+                                stop("Invalid number of dimensions")
                         .Object@coords <- coords
                 }else{
                         stop("Invalid format for coordinates")
@@ -66,19 +75,21 @@ setMethod(
                         return(object@coords)
                 }else if(as == "data.frame"){
                         points_list <- object@coords
-                        df <- matrix(nrow = length(points_list), ncol = 3)
-                        for(i in seq(length(points_list))){
-                                df[i,] <- getCoords(points_list[[i]])
-                        }
+                        # df <- matrix(nrow = length(points_list), ncol = 3)
+                        # for(i in seq(length(points_list))){
+                        #         df[i,] <- getCoords(points_list[[i]])
+                        # }
+                        df <- t(sapply(points_list, function(x) x))
                         df <- as.data.frame(df)
                         colnames(df) <- c("X","Y","Z")
                         return(df)
                 }else if(as == "matrix"){
                         points_list <- object@coords
-                        df <- matrix(nrow = length(points_list), ncol = 3)
-                        for(i in seq(length(points_list))){
-                                df[i,] <- getCoords(points_list[[i]])
-                        }
+                        # df <- matrix(nrow = length(points_list), ncol = 3)
+                        # for(i in seq(length(points_list))){
+                        #         df[i,] <- getCoords(points_list[[i]])
+                        # }
+                        df <- t(sapply(points_list, function(x) x))
                         colnames(df) <- c("X","Y","Z")
                         return(df)
                 }else{
@@ -90,33 +101,50 @@ setMethod(
 #### setAs ####
 setAs("NULL", "points3DDataFrame", function(from, to)
         new(to, list(), data.frame()))
+setAs("points3DDataFrame", "data.frame", function(from, to)
+        cbind(getCoords(from, "data.frame"), getData(from)))
 
 
 #### rbind, cbind equivalents ####
 setMethod("bindPoints", c("points3DDataFrame","points3DDataFrame"),
           function(x, y){
-                  points_list <- c(getCoords(x), getCoords(y))
-                  df <- merge(getData(x), getData(y), all=T, sort=F)
-                  return(points3DDataFrame(points_list,df))
+                  coords <- rbind(
+                          getCoords(x, "matrix"), 
+                          getCoords(y, "matrix"))
+                  row.names(coords) <- seq(nrow(coords))
+                  datax <- getData(x)
+                  datay <- getData(y)
+                  samecolsx <- colnames(datax) %in% colnames(datay)
+                  samecolsy <- colnames(datay) %in% colnames(datax)
+                  padx <- matrix(NA, nrow(x), sum(!samecolsy))
+                  colnames(padx) <- colnames(datay[!samecolsy])
+                  pady <- matrix(NA, nrow(y), sum(!samecolsx))
+                  colnames(pady) <- colnames(datax[!samecolsx])
+                  datax <- cbind(datax, padx)
+                  datay <- cbind(datay, pady)
+                  df <- merge(datax, datay, all=T, sort=F)
+                  row.names(df) <- seq(nrow(df))
+                  return(points3DDataFrame(coords,df))
           })
 
 #### reScale ####
-setMethod(
-        f = "reScale",
-        signature = "points3DDataFrame",
-        definition = function(object, 
-                              old_range = boundingBox(object), 
-                              new_range = matrix(rep(c(0,1),3),2,3)){
-                points_list <- getCoords(object)
-                df <- getData(object)
-                points_list <- lapply(
-                        points_list,
-                        function(x) reScale(x, old_range, new_range)
-                )
-                return(points3DDataFrame(points_list,df))
-        }
-)
+# setMethod(
+#         f = "reScale",
+#         signature = "points3DDataFrame",
+#         definition = function(object, 
+#                               old_range = boundingBox(object), 
+#                               new_range = matrix(rep(c(0,1),3),2,3)){
+#                 points_list <- getCoords(object)
+#                 df <- getData(object)
+#                 points_list <- lapply(
+#                         points_list,
+#                         function(x) reScale(x, old_range, new_range)
+#                 )
+#                 return(points3DDataFrame(points_list,df))
+#         }
+# )
 
+#### pointify ####
 setMethod(
         f = "pointify",
         signature = "points3DDataFrame",
@@ -266,149 +294,149 @@ setMethod(
 )
 
 #### classify ####
-setMethod(
-        f = "classify",
-        signature = c("points3DDataFrame", "points3DDataFrame"),
-        definition = function(x, y, value1, value2 = value1, to = value1, 
-                              strength, model, nugget, verbose = T, 
-                              output.unc = F,
-                              tangents = NULL, dip = "Dip", strike = "Strike"){
-                # setup
-                Ndata <- nrow(x)
-                xdata <- getData(x)
-                ydata <- getData(y)
-                categories <- unique(c(xdata[,value1], xdata[,value2]))
-                ncat <- length(categories)
-                # y[".mean"] <- -1
-                if(!is.null(tangents)) 
-                        tangents <- getPlaneDirections(tangents, dip, strike)
-
-                # indicator matrix
-                indmat <- matrix(NA, nrow(y), ncat)
-                varmat <- matrix(NA, nrow(y), ncat)
-
-                # indicator kriging
-                for(item in categories){
-                        # indicator
-                        ind <- matrix(-strength, nrow(x), 2) # negative
-                        ind[xdata[,value1] == item, 1] <- strength # positive 1
-                        ind[xdata[,value2] == item, 2] <- strength # positive 2
-                        x[".ind"] <- rowMeans(ind) # contacts get 0
-                        x[".nugget"] <- nugget
-                        x[getData(x)$.ind == 0, ".nugget"] <- 1e-9 # regularization
-                        # kriging
-                        if(verbose){
-                                cat("Classifying ", item, " ... \n",
-                                    sep = "")
-                        }
-                        gp <- GP(x, model, value = ".ind", nugget = ".nugget",
-                                 mean = -1, tangents = tangents)
-                        if(output.unc){
-                                tempgr <- predict(gp, y, output.var = T)
-                                indmat[, which(categories == item)] <-
-                                        unlist(getData(tempgr[".ind"]))
-                                varmat[, which(categories == item)] <-
-                                        unlist(getData(tempgr[".ind.var"]))
-                        }
-                        else{
-                                tempgr <- predict(gp, y, output.var = F)
-                                indmat[, which(categories == item)] <-
-                                        unlist(getData(tempgr[".ind"]))
-                        }
-                }
-
-
-                # classification (one vs all)
-                # code_matrix <- matrix(-1,ncat,ncat) + diag(2,ncat,ncat)
-                # indmat <- indmat %*% code_matrix
-                calcprob <- function(rw){
-                        # preventing NaNs
-                        rw[rw > 20] <- 20
-                        rw[rw < -20] <- -20
-                        # randomly breaking ties
-                        rw <- rw + rnorm(length(rw), sd = 1e-6)
-                        # probabilities
-                        exp(rw) / sum(exp(rw))
-                }
-                probmat <- t(apply(indmat, 1, calcprob))
-                ids <- apply(probmat, 1, which.max)
-                ydata[,to] <- categories[ids]
-
-                # probabilities
-                colnames(probmat) <- paste0(to,"..",
-                                            make.names(categories),
-                                            ".prob")
-                ydata[,colnames(probmat)] <- as.data.frame(probmat)
-
-                # indicators
-                # distance from border calculated from probabilities
-                indmat <- t(apply(probmat, 1, function(x){
-                        y <- log(x)
-                        ysort <- sort(y, decreasing = T)
-                        y - mean(ysort[1:2])
-                }))
-                inddf <- data.frame(indmat)
-                colnames(inddf) <- paste0(to,"..",
-                                          make.names(categories),".ind")
-                ydata[,colnames(inddf)] <- inddf
-
-                # uncertainty (geometric mean of entropy and relative variance)
-                if(output.unc){
-                        if(class(model) != "list") model <- list(model)
-                        totvar <- sum(sapply(model, function(m) m@contribution))
-                        entropy <- rowSums(- probmat * log(probmat)) / log(ncat)
-                        rel_var <- rowMeans(varmat) / totvar
-                        u <- sqrt(entropy * rel_var)
-                        ydata[, paste0(to,"..uncertainty")] <- u
-                }
-
-                # end
-                y@data <- ydata
-                return(y)
-        }
-)
-
-setMethod(
-        f = "classify",
-        signature = c("points3DDataFrame", "missing"),
-        definition = function(x, y, value1, value2 = value1, 
-                              model, strength, nugget,
-                              verbose = T,
-                              tangents = NULL, dip = "Dip", strike = "Strike",
-                              parts = 5, seed = NULL){
-                # setup
-                xdata <- getData(x)
-                categories <- unique(c(xdata[,value1], xdata[,value2]))
-                ncat <- length(categories)
-                id_points <- which(xdata[,value1] == xdata[,value2])
-                if(!is.null(seed)) set.seed(seed)
-                CVpart <- sample.int(parts, size = nrow(x),
-                                     replace = T)
-                pred <- character(length = nrow(x))
-
-                # cross validation
-                for(i in seq(parts)){
-                        if(verbose) cat("Cross validation partition", i,
-                                        "of", parts, "\n")
-                        # xids <- id_points[CVpart != i]
-                        # yids <- id_points[CVpart == i]
-                        # xtemp <- bindPoints(x[-id_points,], x[xids,])
-                        # ytemp <- x[yids, ]
-                        xids <- CVpart != i
-                        yids <- CVpart == i
-                        ytemp <- classify(x[xids,], x[yids,], value1 = value1,
-                                          value2 = value2, model = model,
-                                          strength = strength, nugget = nugget,
-                                          verbose = verbose,
-                                          to = ".pred",
-                                          tangents = tangents, dip = dip,
-                                          strike = strike)
-                        pred[yids] <- unlist(getData(ytemp[".pred"]))
-                }
-                cv <- mean(pred[id_points] == xdata[id_points, value1])
-                return(cv)
-        }
-)
+# setMethod(
+#         f = "classify",
+#         signature = c("points3DDataFrame", "points3DDataFrame"),
+#         definition = function(x, y, value1, value2 = value1, to = value1, 
+#                               strength, model, nugget, verbose = T, 
+#                               output.unc = F,
+#                               tangents = NULL, dip = "Dip", strike = "Strike"){
+#                 # setup
+#                 Ndata <- nrow(x)
+#                 xdata <- getData(x)
+#                 ydata <- getData(y)
+#                 categories <- unique(c(xdata[,value1], xdata[,value2]))
+#                 ncat <- length(categories)
+#                 # y[".mean"] <- -1
+#                 if(!is.null(tangents)) 
+#                         tangents <- getPlaneDirections(tangents, dip, strike)
+# 
+#                 # indicator matrix
+#                 indmat <- matrix(NA, nrow(y), ncat)
+#                 varmat <- matrix(NA, nrow(y), ncat)
+# 
+#                 # indicator kriging
+#                 for(item in categories){
+#                         # indicator
+#                         ind <- matrix(-strength, nrow(x), 2) # negative
+#                         ind[xdata[,value1] == item, 1] <- strength # positive 1
+#                         ind[xdata[,value2] == item, 2] <- strength # positive 2
+#                         x[".ind"] <- rowMeans(ind) # contacts get 0
+#                         x[".nugget"] <- nugget
+#                         x[getData(x)$.ind == 0, ".nugget"] <- 1e-9 # regularization
+#                         # kriging
+#                         if(verbose){
+#                                 cat("Classifying ", item, " ... \n",
+#                                     sep = "")
+#                         }
+#                         gp <- GP(x, model, value = ".ind", nugget = ".nugget",
+#                                  mean = -1, tangents = tangents)
+#                         if(output.unc){
+#                                 tempgr <- predict(gp, y, output.var = T)
+#                                 indmat[, which(categories == item)] <-
+#                                         unlist(getData(tempgr[".ind"]))
+#                                 varmat[, which(categories == item)] <-
+#                                         unlist(getData(tempgr[".ind.var"]))
+#                         }
+#                         else{
+#                                 tempgr <- predict(gp, y, output.var = F)
+#                                 indmat[, which(categories == item)] <-
+#                                         unlist(getData(tempgr[".ind"]))
+#                         }
+#                 }
+# 
+# 
+#                 # classification (one vs all)
+#                 # code_matrix <- matrix(-1,ncat,ncat) + diag(2,ncat,ncat)
+#                 # indmat <- indmat %*% code_matrix
+#                 calcprob <- function(rw){
+#                         # preventing NaNs
+#                         rw[rw > 20] <- 20
+#                         rw[rw < -20] <- -20
+#                         # randomly breaking ties
+#                         rw <- rw + rnorm(length(rw), sd = 1e-6)
+#                         # probabilities
+#                         exp(rw) / sum(exp(rw))
+#                 }
+#                 probmat <- t(apply(indmat, 1, calcprob))
+#                 ids <- apply(probmat, 1, which.max)
+#                 ydata[,to] <- categories[ids]
+# 
+#                 # probabilities
+#                 colnames(probmat) <- paste0(to,"..",
+#                                             make.names(categories),
+#                                             ".prob")
+#                 ydata[,colnames(probmat)] <- as.data.frame(probmat)
+# 
+#                 # indicators
+#                 # distance from border calculated from probabilities
+#                 indmat <- t(apply(probmat, 1, function(x){
+#                         y <- log(x)
+#                         ysort <- sort(y, decreasing = T)
+#                         y - mean(ysort[1:2])
+#                 }))
+#                 inddf <- data.frame(indmat)
+#                 colnames(inddf) <- paste0(to,"..",
+#                                           make.names(categories),".ind")
+#                 ydata[,colnames(inddf)] <- inddf
+# 
+#                 # uncertainty (geometric mean of entropy and relative variance)
+#                 if(output.unc){
+#                         if(class(model) != "list") model <- list(model)
+#                         totvar <- sum(sapply(model, function(m) m@contribution))
+#                         entropy <- rowSums(- probmat * log(probmat)) / log(ncat)
+#                         rel_var <- rowMeans(varmat) / totvar
+#                         u <- sqrt(entropy * rel_var)
+#                         ydata[, paste0(to,"..uncertainty")] <- u
+#                 }
+# 
+#                 # end
+#                 y@data <- ydata
+#                 return(y)
+#         }
+# )
+# 
+# setMethod(
+#         f = "classify",
+#         signature = c("points3DDataFrame", "missing"),
+#         definition = function(x, y, value1, value2 = value1, 
+#                               model, strength, nugget,
+#                               verbose = T,
+#                               tangents = NULL, dip = "Dip", strike = "Strike",
+#                               parts = 5, seed = NULL){
+#                 # setup
+#                 xdata <- getData(x)
+#                 categories <- unique(c(xdata[,value1], xdata[,value2]))
+#                 ncat <- length(categories)
+#                 id_points <- which(xdata[,value1] == xdata[,value2])
+#                 if(!is.null(seed)) set.seed(seed)
+#                 CVpart <- sample.int(parts, size = nrow(x),
+#                                      replace = T)
+#                 pred <- character(length = nrow(x))
+# 
+#                 # cross validation
+#                 for(i in seq(parts)){
+#                         if(verbose) cat("Cross validation partition", i,
+#                                         "of", parts, "\n")
+#                         # xids <- id_points[CVpart != i]
+#                         # yids <- id_points[CVpart == i]
+#                         # xtemp <- bindPoints(x[-id_points,], x[xids,])
+#                         # ytemp <- x[yids, ]
+#                         xids <- CVpart != i
+#                         yids <- CVpart == i
+#                         ytemp <- classify(x[xids,], x[yids,], value1 = value1,
+#                                           value2 = value2, model = model,
+#                                           strength = strength, nugget = nugget,
+#                                           verbose = verbose,
+#                                           to = ".pred",
+#                                           tangents = tangents, dip = dip,
+#                                           strike = strike)
+#                         pred[yids] <- unlist(getData(ytemp[".pred"]))
+#                 }
+#                 cv <- mean(pred[id_points] == xdata[id_points, value1])
+#                 return(cv)
+#         }
+# )
 
 # setMethod(
 #         f = "classify_ps",

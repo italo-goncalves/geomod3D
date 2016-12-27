@@ -261,3 +261,154 @@ NumericMatrix covd2_matern1(NumericMatrix u, NumericMatrix v,
         
         return(wrap(C));
 }
+
+// [[Rcpp::export]]
+NumericMatrix covd1_matern2(NumericMatrix u, NumericMatrix v, 
+                            NumericMatrix dir1, NumericMatrix A) {
+        int N_u = u.nrow();
+        int N_v = v.nrow();
+        
+        arma::mat B = arma::mat(A.begin(), A.nrow(), A.ncol(), false);
+        arma::mat AtA = B.t() * B;
+        arma::mat U = arma::mat(u.begin(), u.nrow(), u.ncol(), false);
+        arma::mat V = arma::mat(v.begin(), v.nrow(), v.ncol(), false);
+        arma::mat D1 = arma::mat(dir1.begin(), dir1.nrow(), dir1.ncol(), false);
+        
+        NumericMatrix C(N_u, N_v);
+        
+        for(int i = 0; i < N_u; i++){
+                for(int j = 0; j < N_v; j++){
+                        arma::colvec uvec = U.row(i).t();
+                        arma::colvec vvec = V.row(j).t();
+                        arma::colvec dvec = D1.row(j).t();
+                        
+                        double d = arma::as_scalar(sqrt(sum(square(B * 
+                                                   (uvec - vvec)))));
+                        d += 1e-12;
+                        
+                        arma::colvec h = uvec - vvec;
+                        arma::colvec grad = (12 + 72*d) * exp(-6 * d) * AtA * h;
+                        
+                        C(i, j) = arma::as_scalar(grad.t() * dvec);
+                }
+        }
+        
+        return(wrap(C));
+}
+
+// [[Rcpp::export]]
+NumericMatrix covd2_matern2(NumericMatrix u, NumericMatrix v, 
+                            NumericMatrix dir1, NumericMatrix dir2,
+                            NumericMatrix A) {
+        int N_u = u.nrow();
+        int N_v = v.nrow();
+        
+        arma::mat B = arma::mat(A.begin(), A.nrow(), A.ncol(), false);
+        arma::mat AtA = B.t() * B;
+        arma::mat U = arma::mat(u.begin(), u.nrow(), u.ncol(), false);
+        arma::mat V = arma::mat(v.begin(), v.nrow(), v.ncol(), false);
+        arma::mat D1 = arma::mat(dir1.begin(), dir1.nrow(), dir1.ncol(), false);
+        arma::mat D2 = arma::mat(dir2.begin(), dir2.nrow(), dir2.ncol(), false);
+        
+        NumericMatrix C(N_u, N_v);
+        
+        for(int i = 0; i < N_u; i++){
+                for(int j = 0; j < N_v; j++){
+                        arma::colvec uvec = U.row(i).t();
+                        arma::colvec vvec = V.row(j).t();
+                        arma::colvec d1vec = D1.row(i).t();
+                        arma::colvec d2vec = D2.row(j).t();
+                        
+                        double d = arma::as_scalar(sqrt(sum(square(B * 
+                                                   (uvec - vvec)))));
+                        d += 1e-12;
+                        
+                        arma::colvec h = AtA * (uvec - vvec);
+                        arma::mat hess = (12 + 72*d) * exp(-6 * d) * AtA - 
+                                432 * exp(-6 * d) * h * h.t();
+                        
+                        C(i, j) = arma::as_scalar(d1vec.t() * hess * d2vec);
+                }
+        }
+        
+        return(wrap(C));
+}
+
+
+// [[Rcpp::export]]
+NumericMatrix covd1_cauchy(NumericMatrix u, NumericMatrix v, 
+                            NumericMatrix dir1, NumericMatrix A,
+                            double p) {
+        int N_u = u.nrow();
+        int N_v = v.nrow();
+        double beta = pow(0.05, -1/p) - 1;
+        
+        arma::mat B = arma::mat(A.begin(), A.nrow(), A.ncol(), false);
+        arma::mat AtA = B.t() * B;
+        arma::mat U = arma::mat(u.begin(), u.nrow(), u.ncol(), false);
+        arma::mat V = arma::mat(v.begin(), v.nrow(), v.ncol(), false);
+        arma::mat D1 = arma::mat(dir1.begin(), dir1.nrow(), dir1.ncol(), false);
+        
+        NumericMatrix C(N_u, N_v);
+        
+        for(int i = 0; i < N_u; i++){
+                for(int j = 0; j < N_v; j++){
+                        arma::colvec uvec = U.row(i).t();
+                        arma::colvec vvec = V.row(j).t();
+                        arma::colvec dvec = D1.row(j).t();
+                        
+                        double d2 = arma::as_scalar((sum(square(B * 
+                                                   (uvec - vvec)))));
+                        d2 += 1e-12;
+                        
+                        arma::colvec h = uvec - vvec;
+                        arma::colvec grad = 2 * p * beta * 
+                                pow(1 + beta * d2, -p - 1) * AtA * h;
+                        
+                        C(i, j) = arma::as_scalar(grad.t() * dvec);
+                }
+        }
+        
+        return(wrap(C));
+}
+
+// [[Rcpp::export]]
+NumericMatrix covd2_cauchy(NumericMatrix u, NumericMatrix v, 
+                            NumericMatrix dir1, NumericMatrix dir2,
+                            NumericMatrix A, double p) {
+        int N_u = u.nrow();
+        int N_v = v.nrow();
+        double beta = pow(0.05, -1/p) - 1;
+        
+        arma::mat B = arma::mat(A.begin(), A.nrow(), A.ncol(), false);
+        arma::mat AtA = B.t() * B;
+        arma::mat U = arma::mat(u.begin(), u.nrow(), u.ncol(), false);
+        arma::mat V = arma::mat(v.begin(), v.nrow(), v.ncol(), false);
+        arma::mat D1 = arma::mat(dir1.begin(), dir1.nrow(), dir1.ncol(), false);
+        arma::mat D2 = arma::mat(dir2.begin(), dir2.nrow(), dir2.ncol(), false);
+        
+        NumericMatrix C(N_u, N_v);
+        
+        for(int i = 0; i < N_u; i++){
+                for(int j = 0; j < N_v; j++){
+                        arma::colvec uvec = U.row(i).t();
+                        arma::colvec vvec = V.row(j).t();
+                        arma::colvec d1vec = D1.row(i).t();
+                        arma::colvec d2vec = D2.row(j).t();
+                        
+                        double d2 = arma::as_scalar((sum(square(B * 
+                                                    (uvec - vvec)))));
+                        d2 += 1e-12;
+                        
+                        arma::colvec h = AtA * (uvec - vvec);
+                        arma::mat hess = 2 * p * beta * 
+                                pow(1 + beta * d2, -p - 1) * AtA - 
+                                4 * beta  * p * (p + 1) * 
+                                pow(1 + beta * d2, -p - 2) * h * h.t();
+                        
+                        C(i, j) = arma::as_scalar(d1vec.t() * hess * d2vec);
+                }
+        }
+        
+        return(wrap(C));
+}
