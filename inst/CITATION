@@ -1,0 +1,19 @@
+citHeader("To cite geomod3D in publications use:")
+
+citEntry(entry = "Article",
+  title        = "A machine learning approach to the potential-field method for implicit modeling of geological structures",
+  author       = personList(as.person("Italo Gomes Goncalves"),
+                   as.person("Felipe Guadagnin"),
+                   as.person("Sissa Kumaira")),
+  journal      = "Computers & Geosciences",
+  year         = "2017",
+  volume       = "103",
+  pages        = "173--182",
+  url          = "http://www.sciencedirect.com/science/article/pii/S0098300416304848",
+
+  textVersion  =
+  paste("Italo Gomes Goncalves, Felipe Guadagnin, Sissa Kumaira (2017).",
+        "A machine learning approach to the potential-field method for implicit modeling of geological structures.",
+        "Computers & Geosciences, 103, 173-182.",
+        "URL http://www.sciencedirect.com/science/article/pii/S0098300416304848")
+)
