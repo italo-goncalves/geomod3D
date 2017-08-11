@@ -7,7 +7,8 @@ NULL
 #' @slot coords A \code{list} containing the coordinates for each data unit.
 #' The contents of the \code{list} vary according to each object:
 #' \itemize{
-#'   \item For \code{points3DDataFrame} objects, a numeric vector of length 3;
+#'   \item For \code{points3DDataFrame} objects and its subclasses, a numeric
+#'   vector of length 3;
 #'   \item For \code{lines3DDataFrame} objects, a numeric vector of length 6,
 #'   where the first 3 elements contain the coordinates of a line segment's
 #'   start and the last 3 contain the coordinates of the segment's end.
@@ -54,6 +55,11 @@ setMethod("nrow", "spatial3DDataFrame",
 )
 setMethod("ncol", "spatial3DDataFrame",
           function(x){return(ncol(x@data))}
+)
+
+#### as.data.frame ####
+setMethod("as.data.frame", "spatial3DDataFrame",
+          function(x){return(as(x, "data.frame"))}
 )
 
 #### show ####
@@ -164,7 +170,7 @@ setMethod(
     # result
     colnames(normalvec) <- c("nX", "nY", "nZ")
     normalvec <- as.data.frame(normalvec)
-    return(new(class(object), GetCoords(object), normalvec))
+    return(directions3DDataFrame(coords = coords, directions = normalvec))
   }
 )
 
@@ -192,10 +198,9 @@ setMethod(
     # result
     vecs <- as.data.frame(rbind(dipvec, strvec))
     colnames(vecs) <- c("dX", "dY", "dZ")
-    # vecs$reg <- 1e-9 # used for kriging later
     coords <- GetCoords(object)
     coords <- c(coords, coords)
-    return(new(class(object), coords, vecs))
+    return(directions3DDataFrame(coords = coords, directions = vecs))
   }
 )
 
@@ -218,8 +223,7 @@ setMethod(
     # result
     dipvec <- as.data.frame(dipvec)
     colnames(dipvec) <- c("dX", "dY", "dZ")
-    # dipvec$reg <- 1e-9 # used for kriging later
     coords <- GetCoords(object)
-    return(new(class(object), coords, dipvec))
+    return(directions3DDataFrame(coords = coords, directions = dipvec))
   }
 )

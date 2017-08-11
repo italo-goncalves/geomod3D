@@ -17,8 +17,8 @@ GetPlaneDirections(object, ...)
 \item{dip, strike}{Names of columns containing dip and strike information.}
 }
 \value{
-An object of the same class as \code{object} (with twice the number
-of rows) containing the coordinates of the vectors that define a structural
+A \code{directions3DDataFrame} (with twice the number of rows as the
+input) containing the coordinates of the vectors that define a structural
 plane (one parallel to dip and the other parallel to strike). The
 coordinates are normalized to unit length.
 }
@@ -27,4 +27,7 @@ Calculates structural planes' dip and strike vectors.
 }
 \details{
 Dip and strike values are assumed to be in degrees.
+}
+\seealso{
+\code{\link{GetNormals}}, \code{\link{GetLineDirections}}
 }

@@ -1,6 +1,6 @@
 Package: geomod3D
 Title: Implicit 3D Geological Modeling and Geostatistics
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: person("Italo", "Goncalves", email = "italogoncalves.igg@gmail.com", 
     role = c("aut", "cre"))
 Description: Implicit 3D geological modeling and visualization of 3D geospatial 
@@ -15,17 +15,21 @@ Collate:
     'generics.R'
     'spatial3DDataFrame.R'
     'points3DDataFrame.R'
+    'directions3DDataFrame.R'
     'GP.R'
     'GP_geomod.R'
     'RcppExports.R'
+    'SPGP.R'
+    'SPGP_geomod.R'
+    'grid3DDataFrame.R'
+    'blocks3DDataFrame.R'
     'covarianceStructure3D.R'
     'data.R'
     'lines3DDataFrame.R'
     'geostat3D.R'
-    'grid3DDataFrame.R'
 RoxygenNote: 6.0.1
 Suggests: knitr,
     rmarkdown, misc3d
 VignetteBuilder: knitr
 LinkingTo: Rcpp, RcppArmadillo
-Imports: Rcpp, GA, dplyr, tidyr, scales, Matrix, Deriv
+Imports: Rcpp, GA, dplyr, tidyr, scales, Matrix, Deriv, binaryLogic

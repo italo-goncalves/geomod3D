@@ -2,46 +2,54 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 .vectorized_pdist <- function(Ar, Br) {
-    .Call('geomod3D_vectorized_pdist', PACKAGE = 'geomod3D', Ar, Br)
+    .Call('_geomod3D_vectorized_pdist', PACKAGE = 'geomod3D', Ar, Br)
 }
 
 .covd1_gaussian <- function(u, v, dir1, A) {
-    .Call('geomod3D_covd1_gaussian', PACKAGE = 'geomod3D', u, v, dir1, A)
+    .Call('_geomod3D_covd1_gaussian', PACKAGE = 'geomod3D', u, v, dir1, A)
 }
 
 .covd2_gaussian <- function(u, v, dir1, dir2, A) {
-    .Call('geomod3D_covd2_gaussian', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
+    .Call('_geomod3D_covd2_gaussian', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
 }
 
 .covd1_cubic <- function(u, v, dir1, A) {
-    .Call('geomod3D_covd1_cubic', PACKAGE = 'geomod3D', u, v, dir1, A)
+    .Call('_geomod3D_covd1_cubic', PACKAGE = 'geomod3D', u, v, dir1, A)
 }
 
 .covd2_cubic <- function(u, v, dir1, dir2, A) {
-    .Call('geomod3D_covd2_cubic', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
+    .Call('_geomod3D_covd2_cubic', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
 }
 
 .covd1_matern1 <- function(u, v, dir1, A) {
-    .Call('geomod3D_covd1_matern1', PACKAGE = 'geomod3D', u, v, dir1, A)
+    .Call('_geomod3D_covd1_matern1', PACKAGE = 'geomod3D', u, v, dir1, A)
 }
 
 .covd2_matern1 <- function(u, v, dir1, dir2, A) {
-    .Call('geomod3D_covd2_matern1', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
+    .Call('_geomod3D_covd2_matern1', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
 }
 
 .covd1_matern2 <- function(u, v, dir1, A) {
-    .Call('geomod3D_covd1_matern2', PACKAGE = 'geomod3D', u, v, dir1, A)
+    .Call('_geomod3D_covd1_matern2', PACKAGE = 'geomod3D', u, v, dir1, A)
 }
 
 .covd2_matern2 <- function(u, v, dir1, dir2, A) {
-    .Call('geomod3D_covd2_matern2', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
+    .Call('_geomod3D_covd2_matern2', PACKAGE = 'geomod3D', u, v, dir1, dir2, A)
 }
 
 .covd1_cauchy <- function(u, v, dir1, A, p) {
-    .Call('geomod3D_covd1_cauchy', PACKAGE = 'geomod3D', u, v, dir1, A, p)
+    .Call('_geomod3D_covd1_cauchy', PACKAGE = 'geomod3D', u, v, dir1, A, p)
 }
 
 .covd2_cauchy <- function(u, v, dir1, dir2, A, p) {
-    .Call('geomod3D_covd2_cauchy', PACKAGE = 'geomod3D', u, v, dir1, dir2, A, p)
+    .Call('_geomod3D_covd2_cauchy', PACKAGE = 'geomod3D', u, v, dir1, dir2, A, p)
+}
+
+.sparse_sim <- function(path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth) {
+    .Call('_geomod3D_sparse_sim', PACKAGE = 'geomod3D', path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth)
+}
+
+.SPGP_CV <- function(w_, Bi_, y_, K_, d_, yTR, vTR) {
+    .Call('_geomod3D_SPGP_CV', PACKAGE = 'geomod3D', w_, Bi_, y_, K_, d_, yTR, vTR)
 }
 

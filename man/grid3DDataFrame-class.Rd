@@ -16,7 +16,7 @@ Subsetting an object of this class will coerce the output to a
 \section{Slots}{
 
 \describe{
-\item{\code{dim}}{The number of grid points in each direction.}
+\item{\code{dims}}{The number of grid points in each direction.}
 }}
 
 \seealso{

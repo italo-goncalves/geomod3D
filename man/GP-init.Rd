@@ -7,7 +7,7 @@
 \usage{
 \S4method{initialize}{GP}(.Object, data, model, value, nugget, mean = NULL,
   trend = NULL, weights = NULL, force.interp = numeric(), reg.v = 1e-09,
-  tangents = NULL, reg.t = 1e-12)
+  tangents = NULL, reg.t = 1e-12, nugget.t = 0)
 }
 \arguments{
 \item{data}{A \code{spatial3DDataFrame} object containing the data one
@@ -33,12 +33,14 @@ values between 0 and 1)}
 \item{reg.v}{Regularization to improve stability. A single value or a vector
 with length matching the number of data points.}
 
-\item{tangents}{A \code{points3DDataFrame} object containing structural
+\item{tangents}{A \code{directions3DDataFrame} object containing structural
 geology data. Most likely generated with the \code{GetLineDirections()}
 method.}
 
 \item{reg.t}{Regularization for structural data. A single value or a vector
 with length matching the number of structural data.}
+
+\item{nugget.t}{The nugget effect of the directional data.}
 }
 \description{
 Implementation of the Gaussian Process model for 3D spatial interpolation.

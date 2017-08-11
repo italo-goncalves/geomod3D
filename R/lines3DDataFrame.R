@@ -1,4 +1,5 @@
 #' @include spatial3DDataFrame.R
+NULL
 
 #### lines3DDataFrame class ####
 #' Drillhole database
@@ -102,7 +103,7 @@ setMethod(
 
     ## building directly from list and data.frame
     .Object@coords <- lines_list
-    .Object@data <- df
+    .Object@data <- as.data.frame(df)
     # bounding box
     lines_df <- GetCoords(.Object,"data.frame")
     names(lines_df) <- rep(c("X","Y","Z"),2)

@@ -45,8 +45,8 @@ setMethod(
   f = "initialize",
   signature = "points3DDataFrame",
   definition = function(.Object, coords, df){
-    if (missing(df)) df <- data.frame(.dummy = rep(NA, nrow(coords)))
-    if (class(coords) %in% c("matrix", "Matrix", "data.frame", "tbl_df")) {
+    # coordinates
+    if (any(class(coords) %in% c("matrix", "Matrix", "data.frame", "tbl_df"))){
       coords <- as.matrix(coords)
       # enforcing 3D
       if (ncol(coords) > 3)
@@ -62,9 +62,10 @@ setMethod(
       .Object@coords <- coords
     }else
       stop("Invalid format for coordinates")
-    .Object@data <- df
+    Ndata <- length(coords)
+
     # bounding box
-    if (nrow(df) > 0){
+    if (Ndata > 0){
       points_df <- GetCoords(.Object, "data.frame")
       bbox <- as.matrix(rbind(
         apply(points_df, 2, min),
@@ -73,6 +74,11 @@ setMethod(
       .Object@bbox <- bbox
     }else
       .Object@bbox <- matrix(0, 2, 3)
+
+    # data
+    if (missing(df)) df <- data.frame(.dummy = rep(NA, Ndata))
+    .Object@data <- as.data.frame(df)
+
     # end
     validObject(.Object)
     return(.Object)
@@ -202,33 +208,6 @@ setMethod(
       shade3d(
         cylinder3d(cylcoords, radius = size/2,
                    sides = 128, closed = -2),
-        col = col[i]
-      )
-    }
-  }
-)
-
-#### DrawTangentLines ####
-#' @rdname DrawTangentLines
-setMethod(
-  f = "DrawTangentLines",
-  signature = "points3DDataFrame",
-  definition = function(object, size, dX = "dX", dY = "dY", dZ = "dZ",
-                        col = "yellow"){
-    # setup
-    N <- nrow(object)
-    coords <- GetCoords(object, "matrix")
-    dirs <- GetData(object[c(dX, dY, dZ)])
-    if (length(col) < N)
-      col <- rep(col, length.out = N)
-
-    # drawing lines
-    for (i in seq(N)){
-      cylcoords <- rbind(coords[i, ] + dirs[i, ] * size/2,
-                         coords[i, ] - dirs[i, ] * size/2)
-      shade3d(
-        cylinder3d(cylcoords, radius = size/10,
-                   sides = 32, closed = -2),
         col = col[i]
       )
     }

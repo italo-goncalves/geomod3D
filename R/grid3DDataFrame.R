@@ -7,7 +7,7 @@ NULL
 #' A 3D grid with equally spaced points. Extends the \code{points3DDataFrame}
 #' class.
 #'
-#' @slot dim The number of grid points in each direction.
+#' @slot dims The number of grid points in each direction.
 #'
 #' @details Subsetting an object of this class will coerce the output to a
 #' \code{points3DDataFrame} object.
@@ -17,7 +17,7 @@ NULL
 #' @export grid3DDataFrame
 grid3DDataFrame <- setClass(
   "grid3DDataFrame",
-  slots = c(dim = "matrix"),
+  slots = c(dims = "matrix"),
   contains = "points3DDataFrame",
   validity = function(object) {
     # callNextMethod(object)
@@ -48,8 +48,8 @@ setMethod(
     nx <- length(gridx)
     ny <- length(gridy)
     nz <- length(gridz)
-    .Object@dim <- matrix(c(nx, ny, nz), 1, 3)
-    colnames(.Object@dim) <- c("X","Y","Z")
+    .Object@dims <- matrix(c(nx, ny, nz), 1, 3)
+    colnames(.Object@dims) <- c("X","Y","Z")
 
     # coordinates
     coords <- c(
@@ -90,7 +90,7 @@ setMethod(
     cat(nrow(object), " coordinates and ",
         ncol(object), " attributes\n\n", sep = "")
     cat("Number of points:\n")
-    d <- object@dim; rownames(d) <- ""; show(d)
+    d <- object@dims; rownames(d) <- ""; show(d)
     cat("\nBounding Box:\n")
     show(BoundingBox(object))
     cat("\nCoordinates:\n")
@@ -126,7 +126,7 @@ setMethod(
   signature = "grid3DDataFrame",
   definition = function(object, value){
     df <- GetData(object)
-    ar3d <- array(data = df[, value], dim = object@dim)
+    ar3d <- array(data = df[, value], dim = object@dims)
     coords <- GetCoords(object, "matrix")
     return(list(value = ar3d,
                 x = sort(unique(coords[, 1])),

@@ -17,8 +17,8 @@ GetNormals(object, ...)
 \item{dip, strike}{Names of columns containing dip and strike information.}
 }
 \value{
-An object of the same class as \code{object} containing the
-coordinates of the normals to the specified planes (nX, nY, nZ). The
+A \code{directions3DDataFrame} containing the
+coordinates of the normals to the specified planes. The
 coordinates are normalized to unit length.
 }
 \description{
@@ -26,4 +26,7 @@ Calculates the vector normal to a structural plane.
 }
 \details{
 Dip and strike values are assumed to be in degrees.
+}
+\seealso{
+\code{\link{GetPlaneDirections}}, \code{\link{GetLineDirections}}
 }

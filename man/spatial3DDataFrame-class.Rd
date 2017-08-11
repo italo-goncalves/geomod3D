@@ -18,7 +18,8 @@ define methods that are common to all of its subclasses.
 \item{\code{coords}}{A \code{list} containing the coordinates for each data unit.
 The contents of the \code{list} vary according to each object:
 \itemize{
-  \item For \code{points3DDataFrame} objects, a numeric vector of length 3;
+  \item For \code{points3DDataFrame} objects and its subclasses, a numeric
+  vector of length 3;
   \item For \code{lines3DDataFrame} objects, a numeric vector of length 6,
   where the first 3 elements contain the coordinates of a line segment's
   start and the last 3 contain the coordinates of the segment's end.

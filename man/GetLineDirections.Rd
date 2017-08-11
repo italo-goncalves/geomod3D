@@ -17,7 +17,7 @@ GetLineDirections(object, ...)
 \item{dip, azimuth}{Names of columns containing dip and azimuth information.}
 }
 \value{
-An object of the same class as \code{object} containing the
+A \code{directions3DDataFrame} containing the
 coordinates of the vectors that define a structural
 line. The coordinates are normalized to unit length.
 }
@@ -26,4 +26,7 @@ Calculates the coordinates of vectors corresponding to structural directions.
 }
 \details{
 Dip and azimuth values are assumed to be in degrees.
+}
+\seealso{
+\code{\link{GetPlaneDirections}}, \code{\link{GetNormals}}
 }

@@ -2,6 +2,7 @@
 #' @include utils.R
 #' @include spatial3DDataFrame.R
 #' @include points3DDataFrame.R
+#' @include directions3DDataFrame.R
 NULL
 
 #### Gaussian Process class ####
@@ -10,12 +11,13 @@ NULL
 #' Implementation of the Gaussian Process model for 3D spatial interpolation.
 #'
 #' @slot data A \code{spatial3DDataFrame} object containing the necessary data.
-#' @slot tangents A \code{points3DDataFrame} object containing structural
+#' @slot tangents A \code{directions3DDataFrame} object containing structural
 #' geology data. Most likely generated with the \code{GetLineDirections()}
-#' method.
+#' or \code{GetPlaneDirections()} method.
 #' @slot model The covariance model. A \code{list} containing one or more
 #' \code{covarianceStructure3D} objects.
 #' @slot nugget The model's nugget effect or noise variance.
+#' @slot nugget.t The nugget effect of the directional data.
 #' @slot mean The global mean. Irrelevant if a trend is used.
 #' @slot trend The model's trend component. A formula in character format.
 #' @slot beta The trend coefficients.
@@ -33,9 +35,10 @@ NULL
 GP <- setClass(
   "GP",
   slots = c(data = "spatial3DDataFrame",
-            tangents = "points3DDataFrame",
+            tangents = "directions3DDataFrame",
             model = "list",
             nugget = "numeric",
+            nugget.t = "numeric",
             mean = "numeric",
             trend = "character",
             beta = "matrix",
@@ -59,6 +62,7 @@ GP <- setClass(
 #' @param value The column name of the variable to be modeled. It is assumed
 #' the column does not contain missing values.
 #' @param nugget The model's nugget effect or noise variance.
+#' @param nugget.t The nugget effect of the directional data.
 #' @param mean The global mean. Irrelevant if a trend is provided.
 #' @param trend The model's trend component. A formula in character format.
 #' @param weights The importance of each data point in the model (a vector with
@@ -66,7 +70,7 @@ GP <- setClass(
 #' @param force.interp Indices of points that must be interpolated exactly.
 #' @param reg.v Regularization to improve stability. A single value or a vector
 #' with length matching the number of data points.
-#' @param tangents A \code{points3DDataFrame} object containing structural
+#' @param tangents A \code{directions3DDataFrame} object containing structural
 #' geology data. Most likely generated with the \code{GetLineDirections()}
 #' method.
 #' @param reg.t Regularization for structural data. A single value or a vector
@@ -103,7 +107,7 @@ setMethod(
   definition = function(.Object, data, model, value, nugget,
                         mean = NULL, trend = NULL, weights = NULL,
                         force.interp = numeric(), reg.v = 1e-9,
-                        tangents = NULL, reg.t = 1e-12){
+                        tangents = NULL, reg.t = 1e-12, nugget.t = 0){
 
     # covariance model
     if(length(model) == 1 & class(model) != "list")
@@ -119,7 +123,9 @@ setMethod(
     yval <- data[["value"]]
 
     # nugget
+    if(length(nugget) != 1) stop("Nugget must be a scalar")
     .Object@nugget <- nugget
+    .Object@nugget.t <- nugget.t
 
     # weights
     if(is.null(weights)) weights <- rep(1, nrow(data))
@@ -144,17 +150,18 @@ setMethod(
 
     # data
     .Object@data <- data[c("value", "weights", "interpolate")]
-    .Object@tangents <- as(tangents, "points3DDataFrame")
+    tangents <- as(tangents, "directions3DDataFrame")
+    .Object@tangents <- tangents
 
     # trend
     if(is.null(trend) | length(trend) == 0){
-      TR <- matrix(0,nrow(data),0)
+      TR <- matrix(0, nrow(data), 0)
     }else{
       TR <- TrendMatrix(data, trend)
       if(!is.null(tangents) && nrow(tangents) > 0){
         TR <- rbind(
           TR,
-          TrendMatrixD1(tangents, trend)
+          TrendMatrix(tangents, trend)
         )
       }
       mean <- 0
@@ -165,14 +172,14 @@ setMethod(
     Ntang <- 0
     nug2 <-  nugget / (weights + reg.v)
     nug2[force.interp] <- reg.v
-    K <- CovarianceMatrix(data, data, model, T) +
+    K <- CovarianceMatrix(data, data, model) +
       diag(nug2, length(nug2), length(nug2))
     if(!is.null(tangents) && nrow(tangents) > 0){
-      K1 <- CovarianceMatrixD1(data, tangents, model, T)
-      K2 <- CovarianceMatrixD2(tangents, model, T)
+      K1 <- CovarianceMatrix(data, tangents, model)
+      K2 <- CovarianceMatrix(tangents, tangents, model)
       Ntang <- nrow(K2)
       # regularization
-      K2 <- K2 + diag(reg.t, Ntang, Ntang)
+      K2 <- K2 + diag(reg.t + nugget.t, Ntang, Ntang)
       # final matrix
       K <- rbind(
         cbind(K, K1),
@@ -201,13 +208,14 @@ setMethod(
     .Object@pre_comp$w_value <- as.numeric(w_value)
     .Object@pre_comp$w_var <- L
     if(Ntrend > 0){
-      HLi <- solve(L, TR)
-      A <- t(HLi) %*% HLi
+      HLi <- t(TR) %*% solve(L)
+      A <- HLi %*% t(HLi)
       b1 <- t(TR) %*% w_value
       beta <- solve(A, b1)
       .Object@beta <- as.matrix(beta)
       .Object@trend <- trend
       .Object@pre_comp$w_trend <- HLi
+      .Object@pre_comp$A <- A
     }
 
     # likelihood
@@ -216,8 +224,8 @@ setMethod(
       0.5 * sum(yval * w_value) -
       0.5 * length(yval) * log(2 * pi)
     if(Ntrend > 0){
-      LiYH <- t(LiY) %*% HLi
-      tmp <- LiYH %*% solve(A, t(LiYH))
+      LiYH <- HLi %*% LiY
+      tmp <- t(LiYH) %*% solve(A, LiYH)
       .Object@likelihood <- .Object@likelihood +
         0.5 * as.numeric(tmp) +
         Ntrend * log(2*pi) -
@@ -249,15 +257,54 @@ setMethod(
   }
 )
 
+#### summary ####
+setMethod(
+  f = "summary",
+  signature = "GP",
+  definition = function(object){
+    # statistics
+    model_var <- sapply(object@model, function(m) m@contribution)
+    nug_rel <- 100 * object@nugget / (sum(model_var) + object@nugget)
+    cov_rel <- 100 * model_var / (sum(model_var) + object@nugget)
+
+    show(object)
+
+    # covariance model
+    cat("\nNugget: ", object@nugget, " (", sprintf("%02.2f", nug_rel), "%)\n\n", sep = "")
+    for(i in seq_along(cov_rel)){
+      cat("Structure ", i, ": ",
+          object@model[[i]]@contribution,
+          " (", sprintf("%02.2f", cov_rel[i]), "%)\n",
+          "Type: ", object@model[[i]]@type, "\n",
+          "Range (max/med/min): ",
+          object@model[[i]]@maxrange, "/",
+          object@model[[i]]@midrange, "/",
+          object@model[[i]]@minrange, "\n",
+          "Orientation (azimuth/dip/rake): ",
+          object@model[[i]]@azimuth, "/",
+          object@model[[i]]@dip, "/",
+          object@model[[i]]@rake, "\n",
+          ifelse(object@model[[i]]@type == "cauchy",
+                 paste("Power:", object@model[[i]]@power, "\n\n"), "\n"),
+          sep = "")
+    }
+
+    # tangents
+    if (nrow(object@tangents) > 0)
+      cat("Nugget for tangents:", object@nugget.t, "\n")
+  }
+)
+
+
 #### Predict ####
 #' @rdname Predict
 setMethod(
   f = "Predict",
   signature = "GP",
-  definition = function(object, target, to = "value", output.var = F){
+  definition = function(object, target, to = "value", output.var = T){
 
     # pre processing
-    w_var <- object@pre_comp$w_var
+    w_var <- Matrix(object@pre_comp$w_var)
     w_value <- object@pre_comp$w_value
 
     # trend
@@ -268,64 +315,103 @@ setMethod(
       beta <- object@beta
     }
 
-    # slicing target to save memory
-    maxgrid <- 1000 # optimize this
-    Ngrid <- nrow(target)
-    Nslice <- ceiling(Ngrid / maxgrid)
-    t2 <- Pointify(target)
-
-    for(i in seq(Nslice)){
-
-      # slice ID
-      slid <- seq((i - 1) * maxgrid + 1, min(Ngrid, i * maxgrid))
-      ttemp <- t2[slid, ]
-
-      # covariances
-      Ntang <- nrow(object@tangents)
-      Ktarget <- CovarianceMatrix(ttemp, object@data,
-                                   object@model, T)
-      if(Ntang > 0){
-        K1 <- CovarianceMatrixD1(ttemp,
-                                   object@tangents,
-                                   object@model, T)
-        Ktarget <- cbind(Ktarget, K1)
-      }
-
-      # prediction
-      # residuals
-      pred <- apply(Ktarget, 1, function(rw){
-        sum(rw * w_value)
-      }) + object@mean
-      # trend
-      if(length(object@trend) > 0){
-        LinvK <- solve(w_var, t(Ktarget))
-        R <- t(TRtarget[slid,]) - t(w_tr) %*% LinvK
-        pred <- pred + t(R) %*% beta
-      }
-      target[slid, to] <- pred
-
-      # variance
-      if(output.var){
-        tot_var <- sum(sapply(object@model,
-                              function(m) m@contribution))
-        if(length(object@trend) > 0){
-          pred_var <- colSums(LinvK^2)
-          pred_var[pred_var > tot_var] <- tot_var
-          pred_var <- tot_var - pred_var + object@nugget
-          tr_var <- colSums(
-            R * (solve(t(w_tr) %*% w_tr, R))
-          )
-          pred_var <- pred_var + tr_var
-        }
-        else{
-          pred_var <- colSums(solve(w_var, t(Ktarget))^2)
-          pred_var[pred_var > tot_var] <- tot_var
-          pred_var <- tot_var - pred_var + object@nugget
-        }
-        target[slid, paste0(to, ".var")] <- pred_var
-      }
-
+    # covariances
+    Ntang <- nrow(object@tangents)
+    Ktarget <- Matrix(CovarianceMatrix(target, object@data, object@model))
+    if(Ntang > 0){
+      K1 <- Matrix(CovarianceMatrix(target, object@tangents, object@model))
+      Ktarget <- cbind(Ktarget, K1)
     }
+
+    # prediction
+    # residuals
+    pred <- apply(Ktarget, 1, function(rw){
+      sum(rw * w_value)
+    }) + object@mean
+    # trend
+    if(length(object@trend) > 0){
+      LinvK <- solve(w_var, t(Ktarget))
+      R <- t(TRtarget) - w_tr %*% LinvK
+      pred <- pred + t(R) %*% beta
+    }
+    target[, to] <- pred
+
+    # variance
+    if(output.var){
+      tot_var <- sum(sapply(object@model, function(m) m@contribution))
+      if(length(object@trend) > 0){
+        pred_var <- colSums(LinvK ^ 2)
+        pred_var[pred_var > tot_var] <- tot_var
+        pred_var <- tot_var - pred_var + object@nugget
+        tr_var <- colSums(
+          R * (solve(w_tr %*% t(w_tr), R))
+        )
+        pred_var <- pred_var + tr_var
+      }
+      else{
+        pred_var <- colSums(solve(w_var, t(Ktarget)) ^ 2)
+        pred_var[pred_var > tot_var] <- tot_var
+        pred_var <- tot_var - pred_var + object@nugget
+      }
+      target[, paste0(to, ".var")] <- pred_var
+    }
+
+    # # slicing target to save memory
+    # Ngrid <- nrow(target)
+    # maxgrid <- min(1000, Ngrid) # optimize this
+    # Nslice <- ceiling(Ngrid / maxgrid)
+    # t2 <- Pointify(target)
+    #
+    # for(i in seq(Nslice)){
+    #
+    #   # slice ID
+    #   slid <- seq((i - 1) * maxgrid + 1, min(Ngrid, i * maxgrid))
+    #   ttemp <- t2[slid, ]
+    #
+    #   # covariances
+    #   Ntang <- nrow(object@tangents)
+    #   Ktarget <- CovarianceMatrix(ttemp, object@data, object@model)
+    #   if(Ntang > 0){
+    #     K1 <- CovarianceMatrix(ttemp,
+    #                            object@tangents,
+    #                            object@model)
+    #     Ktarget <- cbind(Ktarget, K1)
+    #   }
+    #
+    #   # prediction
+    #   # residuals
+    #   pred <- apply(Ktarget, 1, function(rw){
+    #     sum(rw * w_value)
+    #   }) + object@mean
+    #   # trend
+    #   if(length(object@trend) > 0){
+    #     LinvK <- solve(w_var, t(Ktarget))
+    #     R <- t(TRtarget[slid,]) - t(w_tr) %*% LinvK
+    #     pred <- pred + t(R) %*% beta
+    #   }
+    #   target[slid, to] <- pred
+    #
+    #   # variance
+    #   if(output.var){
+    #     tot_var <- sum(sapply(object@model, function(m) m@contribution))
+    #     if(length(object@trend) > 0){
+    #       pred_var <- colSums(LinvK^2)
+    #       pred_var[pred_var > tot_var] <- tot_var
+    #       pred_var <- tot_var - pred_var + object@nugget
+    #       tr_var <- colSums(
+    #         R * (solve(t(w_tr) %*% w_tr, R))
+    #       )
+    #       pred_var <- pred_var + tr_var
+    #     }
+    #     else{
+    #       pred_var <- colSums(solve(w_var, t(Ktarget))^2)
+    #       pred_var[pred_var > tot_var] <- tot_var
+    #       pred_var <- tot_var - pred_var + object@nugget
+    #     }
+    #     target[slid, paste0(to, ".var")] <- pred_var
+    #   }
+    #
+    # }
 
     # output
     return(target)
@@ -346,10 +432,11 @@ setMethod(
 setMethod(
   f = "Fit",
   signature = "GP",
-  definition = function(object,
+  definition = function(object, contribution = T, nugget = T, nugget.t = F,
+                        maxrange = T,
                         midrange = F, minrange = F,
                         azimuth = F, dip = F, rake = F,
-                        nugget = F, power = F){
+                        power = F, ...){
 
     # setup
     structures <- sapply(object@model, function(x) x@type)
@@ -362,17 +449,27 @@ setMethod(
     w <- object@data[["weights"]]
 
     # optimization limits and starting point
-    opt_min <- opt_max <- numeric(Nstruct * 8 + 1)
-    xstart <- matrix(0, 1, Nstruct * 8 + 1)
+    opt_min <- opt_max <- numeric(Nstruct * 8 + 2)
+    xstart <- matrix(0, 1, Nstruct * 8 + 2)
     for (i in 1:Nstruct){
       # contribution
-      opt_min[(i - 1) * 8 + 1] <- data_var / 1000
-      opt_max[(i - 1) * 8 + 1] <- data_var * 2
+      if(contribution){
+        opt_min[(i - 1) * 8 + 1] <- data_var / 1000
+        opt_max[(i - 1) * 8 + 1] <- data_var * 2
+      }else{
+        opt_min[(i - 1) * 8 + 1] <- object@model[[i]]@contribution
+        opt_max[(i - 1) * 8 + 1] <- object@model[[i]]@contribution
+      }
       xstart[(i - 1) * 8 + 1] <- object@model[[i]]@contribution
 
       # maxrange
-      opt_min[(i - 1) * 8 + 2] <- data_rbase / 1000
-      opt_max[(i - 1) * 8 + 2] <- data_rbase
+      if(maxrange){
+        opt_min[(i - 1) * 8 + 2] <- data_rbase / 1000
+        opt_max[(i - 1) * 8 + 2] <- data_rbase * 10
+      }else{
+        opt_min[(i - 1) * 8 + 2] <- object@model[[i]]@maxrange
+        opt_max[(i - 1) * 8 + 2] <- object@model[[i]]@maxrange
+      }
       xstart[(i - 1) * 8 + 2] <- object@model[[i]]@maxrange
 
       # midrange (multiple of maxrange)
@@ -440,6 +537,17 @@ setMethod(
     }
     xstart[Nstruct * 8 + 1] <- object@nugget
 
+    # nugget for tangents
+    if (nugget.t){
+      opt_min[Nstruct * 8 + 2] <- data_var / 1000
+      opt_max[Nstruct * 8 + 2] <- data_var * 2
+    }
+    else{
+      opt_min[Nstruct * 8 + 2] <- 0 # not used
+      opt_max[Nstruct * 8 + 2] <- 0 # not used
+    }
+    xstart[Nstruct * 8 + 2] <- object@nugget
+
     # conforming starting point to limits
     xstart[xstart < opt_min] <- opt_min[xstart < opt_min]
     xstart[xstart > opt_max] <- opt_max[xstart > opt_max]
@@ -462,17 +570,26 @@ setMethod(
           power = x[(i - 1) * 8 + 8]
         )
       }
+
       # nugget
       if(nugget)
-              tmpnug <- x[Nstruct * 8 + 1]
+        tmpnug <- x[Nstruct * 8 + 1]
       else
-              tmpnug <- object@nugget
+        tmpnug <- object@nugget
+
+      # nugget for tangents
+      if(nugget.t)
+        tmpnug.t <- x[Nstruct * 8 + 2]
+      else
+        tmpnug.t <- object@nugget.t
+
       # GP
       tmpgp <- GP(
         data = object@data,
         model = m,
         value = "value",
         nugget = tmpnug,
+        nugget.t = tmpnug.t,
         mean = object@mean,
         trend = object@trend,
         tangents = object@tangents,
@@ -492,15 +609,82 @@ setMethod(
       fitness = function(x) makeGP(x, F),
       min = opt_min,
       max = opt_max,
-      pmutation = 0.5,
-      popSize = 20,
-      run = 20,
-      monitor = F,
-      suggestions = xstart
+      suggestions = xstart,
+      ...
     )
 
     # update
     sol <- opt@solution
     return(makeGP(sol, T))
+  }
+)
+
+#### Simulate ####
+#' @rdname Simulate
+setMethod(
+  f = "Simulate",
+  signature = "GP",
+  definition = function(object, target, to = "value", Nsim,
+                        discount.noise = F){
+
+    # setup
+    w_var <- object@pre_comp$w_var
+    w_value <- object@pre_comp$w_value
+
+    # number formatting
+    Ndigits <- length(unlist(strsplit(as.character(Nsim), NULL)))
+    form <- paste0("%0", Ndigits, ".0f")
+
+    # covariances
+    Ntang <- nrow(object@tangents)
+    Ktarget <- CovarianceMatrix(target, object@data,
+                                object@model, T)
+    if(Ntang > 0){
+      K1 <- CovarianceMatrixD1(target,
+                               object@tangents,
+                               object@model, T)
+      Ktarget <- cbind(Ktarget, K1)
+    }
+    # pre-computation
+    LinvK <- solve(w_var, t(Ktarget))
+
+    # prediction
+    # residuals
+    pred <- apply(Ktarget, 1, function(rw){
+      sum(rw * w_value)
+    }) + object@mean
+    # trend
+    if(length(object@trend) > 0){
+      TRtarget <- TrendMatrix(target, object@trend)
+      TRdata <- TrendMatrix(object@data, object@trend)
+      w_tr <- object@pre_comp$w_trend
+      beta <- object@beta
+      R <- t(TRtarget) - w_tr %*% LinvK
+      pred <- pred + t(R) %*% beta
+    }
+
+    # covariance matrix
+    post_cov <- crossprod(LinvK)
+    prior_cov <- CovarianceMatrix(target, target, object@model, T) +
+      diag(max(object@nugget * 1e-6, 1e-6), nrow(target), nrow(target)) # regularization
+    if(!discount.noise)
+      prior_cov <- prior_cov + diag(object@nugget, nrow(target), nrow(target))
+    pred_cov <- prior_cov - post_cov
+    if(length(object@trend) > 0){
+      A <- object@pre_comp$A
+      tr_cov <- t(R) %*% solve(A, R)
+      tr_cov <- 0.5 * tr_cov + 0.5 * t(tr_cov) # enforcing symmetry
+      pred_cov <- pred_cov + tr_cov
+    }
+    # pred_cov <- 0.5 * pred_cov + 0.5 * t(pred_cov)
+    Lpred <- chol(pred_cov)
+
+    # simulation
+    rand <- matrix(rnorm(nrow(target) * Nsim), nrow(target), Nsim)
+    sim <- Lpred %*% rand + matrix(pred, nrow(target), Nsim)
+    colnames(sim) <- paste0(to, ".sim_", sprintf(form, seq(Nsim)))
+    target[, colnames(sim)] <- data.frame(as.matrix(sim))
+
+    return(target)
   }
 )

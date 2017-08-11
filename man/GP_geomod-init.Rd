@@ -6,7 +6,8 @@
 \title{Gaussian Process for Implicit Geological Modeling}
 \usage{
 \S4method{initialize}{GP_geomod}(.Object, data, value1, value2 = value1,
-  model, nugget, tangents = NULL, reg.v = 1e-09, reg.t = 1e-09)
+  model, nugget, tangents = NULL, enforce.contacts = T, reg.v = 1e-09,
+  reg.t = 1e-09)
 }
 \arguments{
 \item{data}{A 3D spatial object.}
@@ -24,6 +25,8 @@ geological classes.}
 \item{tangents}{A \code{points3DDataFrame} object containing structural
 geology data. Most likely generated with the \code{GetLineDirections()}
 method.}
+
+\item{enforce.contacts}{Force the model to interpolate geological contacts?}
 
 \item{reg.v}{Regularization to improve stability. A single value or a vector
 with length matching the number of data points.}
@@ -57,7 +60,7 @@ The geological boundaries can be drawn by contouring each class's indicator
 at the value 0.
 }
 \references{
-[1] Gonçalves ÍG, Kumaira S, Guadagnin F.
+[1] Gonçalves IG, Kumaira S, Guadagnin F.
 A machine learning approach to the potential-field method for implicit
 modeling of geological structures. Comput Geosci 2017;103:173–82.
 doi:10.1016/j.cageo.2017.03.015.

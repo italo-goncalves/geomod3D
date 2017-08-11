@@ -3,52 +3,54 @@
 \docType{methods}
 \name{CovarianceMatrix}
 \alias{CovarianceMatrix}
-\alias{CovarianceMatrixD1}
-\alias{CovarianceMatrixD2}
 \alias{CovarianceMatrix,lines3DDataFrame,lines3DDataFrame-method}
 \alias{CovarianceMatrix,lines3DDataFrame,points3DDataFrame-method}
 \alias{CovarianceMatrix,points3DDataFrame,lines3DDataFrame-method}
 \alias{CovarianceMatrix,points3DDataFrame,points3DDataFrame-method}
-\alias{CovarianceMatrixD1,points3DDataFrame,points3DDataFrame-method}
-\alias{CovarianceMatrixD2,points3DDataFrame-method}
+\alias{CovarianceMatrix,points3DDataFrame,directions3DDataFrame-method}
+\alias{CovarianceMatrix,directions3DDataFrame,points3DDataFrame-method}
+\alias{CovarianceMatrix,directions3DDataFrame,directions3DDataFrame-method}
+\alias{CovarianceMatrix,points3DDataFrame,blocks3DDataFrame-method}
+\alias{CovarianceMatrix,blocks3DDataFrame,points3DDataFrame-method}
+\alias{CovarianceMatrix,blocks3DDataFrame,blocks3DDataFrame-method}
 \title{Covariance matrix of spatial data and/or its derivatives.}
 \usage{
 CovarianceMatrix(x, y, ...)
 
-CovarianceMatrixD1(x, tangents, ...)
-
-CovarianceMatrixD2(tangents, ...)
-
-\S4method{CovarianceMatrix}{lines3DDataFrame,lines3DDataFrame}(x, y, model,
-  covariance = T, parts = 10)
+\S4method{CovarianceMatrix}{lines3DDataFrame,lines3DDataFrame}(x, y = x,
+  model, parts = 10)
 
 \S4method{CovarianceMatrix}{lines3DDataFrame,points3DDataFrame}(x, y, model,
-  covariance = T, parts = 10)
+  parts = 10)
 
 \S4method{CovarianceMatrix}{points3DDataFrame,lines3DDataFrame}(x, y, model,
-  covariance = T, parts = 10)
+  parts = 10)
 
-\S4method{CovarianceMatrix}{points3DDataFrame,points3DDataFrame}(x, y, model,
-  covariance = T)
+\S4method{CovarianceMatrix}{points3DDataFrame,points3DDataFrame}(x, y = x,
+  model)
 
-\S4method{CovarianceMatrixD1}{points3DDataFrame,points3DDataFrame}(x, tangents,
-  model, covariance = T)
+\S4method{CovarianceMatrix}{points3DDataFrame,directions3DDataFrame}(x, y,
+  model)
 
-\S4method{CovarianceMatrixD2}{points3DDataFrame}(tangents, model,
-  covariance = T)
+\S4method{CovarianceMatrix}{directions3DDataFrame,points3DDataFrame}(x, y,
+  model)
+
+\S4method{CovarianceMatrix}{directions3DDataFrame,directions3DDataFrame}(x,
+  y = x, model)
+
+\S4method{CovarianceMatrix}{points3DDataFrame,blocks3DDataFrame}(x, y, model)
+
+\S4method{CovarianceMatrix}{blocks3DDataFrame,points3DDataFrame}(x, y, model)
+
+\S4method{CovarianceMatrix}{blocks3DDataFrame,blocks3DDataFrame}(x, y = x,
+  model)
 }
 \arguments{
 \item{x, y}{3D spatial objects.}
 
-\item{tangents}{A \code{points3DDataFrame} containing directional data, most
-likely generated with the \code{GetPlaneDirections()} method.}
-
 \item{model}{A \code{covarianceStructure3D} object representing the spatial
 continuity of the variable of interest, or a \code{list} containing multiple
 such objects.}
-
-\item{covariance}{Should the matrix be calculated as a covariance matrix
-(default) or a variance (gamma) matrix?}
 
 \item{parts}{The number of parts in which to "break" line segments.}
 }

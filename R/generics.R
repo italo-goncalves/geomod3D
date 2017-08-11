@@ -3,6 +3,12 @@
 #' @include utils.R
 NULL
 
+#### base ####
+setGeneric("ncol")
+setGeneric("nrow")
+setGeneric("summary")
+setGeneric("as.data.frame")
+
 #### getters ####
 
 #' \code{spatial3DDataFrame} objects' coordinates
@@ -169,9 +175,10 @@ setGeneric("Make3DArray",
 #'
 #' @details Dip and strike values are assumed to be in degrees.
 #'
-#' @return An object of the same class as \code{object} containing the
-#' coordinates of the normals to the specified planes (nX, nY, nZ). The
+#' @return A \code{directions3DDataFrame} containing the
+#' coordinates of the normals to the specified planes. The
 #' coordinates are normalized to unit length.
+#' @seealso \code{\link{GetPlaneDirections}}, \code{\link{GetLineDirections}}
 setGeneric("GetNormals",
            function(object, ...){standardGeneric("GetNormals")}
 )
@@ -185,10 +192,11 @@ setGeneric("GetNormals",
 #'
 #' @details Dip and strike values are assumed to be in degrees.
 #'
-#' @return An object of the same class as \code{object} (with twice the number
-#' of rows) containing the coordinates of the vectors that define a structural
+#' @return A \code{directions3DDataFrame} (with twice the number of rows as the
+#' input) containing the coordinates of the vectors that define a structural
 #' plane (one parallel to dip and the other parallel to strike). The
 #' coordinates are normalized to unit length.
+#' @seealso \code{\link{GetNormals}}, \code{\link{GetLineDirections}}
 setGeneric("GetPlaneDirections",
            function(object, ...){standardGeneric("GetPlaneDirections")}
 )
@@ -202,9 +210,10 @@ setGeneric("GetPlaneDirections",
 #'
 #' @details Dip and azimuth values are assumed to be in degrees.
 #'
-#' @return An object of the same class as \code{object} containing the
+#' @return A \code{directions3DDataFrame} containing the
 #' coordinates of the vectors that define a structural
 #' line. The coordinates are normalized to unit length.
+#' @seealso \code{\link{GetPlaneDirections}}, \code{\link{GetNormals}}
 setGeneric("GetLineDirections",
            function(object, ...){standardGeneric("GetLineDirections")}
 )
@@ -217,13 +226,9 @@ setGeneric("GetLineDirections",
 #' derivative.
 #'
 #' @param x,y 3D spatial objects.
-#' @param tangents A \code{points3DDataFrame} containing directional data, most
-#' likely generated with the \code{GetPlaneDirections()} method.
 #' @param model A \code{covarianceStructure3D} object representing the spatial
 #' continuity of the variable of interest, or a \code{list} containing multiple
 #' such objects.
-#' @param covariance Should the matrix be calculated as a covariance matrix
-#' (default) or a variance (gamma) matrix?
 #' @param parts The number of parts in which to "break" line segments.
 #'
 #' @details If \code{covariance = F} the resulting matrix is given in variogram
@@ -255,16 +260,6 @@ setGeneric("CovarianceMatrix",
            function(x, y, ...){standardGeneric("CovarianceMatrix")}
 )
 
-#' @rdname CovarianceMatrix
-setGeneric("CovarianceMatrixD1",
-           function(x, tangents, ...){standardGeneric("CovarianceMatrixD1")}
-)
-
-#' @rdname CovarianceMatrix
-setGeneric("CovarianceMatrixD2",
-           function(tangents, ...){standardGeneric("CovarianceMatrixD2")}
-)
-
 #' Trend matrix
 #'
 #' Calculates a matrix containing the components of a trend function at the
@@ -273,9 +268,9 @@ setGeneric("CovarianceMatrixD2",
 #' @param x A 3D spatial object.
 #' @param trend A character string convertable to a formula.
 #'
-#' @details The \code{TrendMatrixD1()} method calculates the derivative of the
-#' trend function at the given locations. This is used in kriging systems
-#' involving derivative data.
+#' @details A call with a \code{directions3DDataFrame} as argument returns
+#' the derivative of the trend function at the given locations. This is used in
+#' situations involving derivative data.
 #'
 #' @return A matrix with \code{nrow(x)} rows and number of columns according to
 #' the specified trend formula.
@@ -283,11 +278,6 @@ setGeneric("CovarianceMatrixD2",
 #' @seealso \code{\link{CovarianceMatrix}}
 setGeneric("TrendMatrix",
            function(x, trend, ...){standardGeneric("TrendMatrix")}
-)
-
-#' @rdname TrendMatrix
-setGeneric("TrendMatrixD1",
-           function(x, trend, ...){standardGeneric("TrendMatrixD1")}
 )
 
 #### visualization ####
@@ -375,21 +365,20 @@ setGeneric("DrawTangentPlanes",
 
 #' Visualization of structural data
 #'
-#' Draws thin cylinders representing the orientation of structural lines.
+#' Draws thin cylinders representing the orientation of structural lines or
+#' directional data in general.
 #'
 #' @param size The length of the cylinders.
-#' @param dX,dY,dZ Names of the columns that contain the structural lines'
-#' directions.
 #' @param col The color of the discs. Either a single value or a vector
 #' matching the object's number of rows.
+#' @param as How to plot the data. \code{"direction"} is useful for
+#' structural data, while \code{"arrow"} can be used for for velocities and
+#' derivative data in a more strict sense.
 #'
 #' @details \code{col} must contain colors in hexadecimal format, such as
 #' \code{"#804DB3"}, or valid color names.
-#'
-#' It is assumed that \code{dX}, \code{dY}, and \code{dZ} are coordinates of
-#' a unit vector.
-setGeneric("DrawTangentLines",
-           function(object, ...){standardGeneric("DrawTangentLines")}
+setGeneric("DrawDirections",
+           function(object, ...){standardGeneric("DrawDirections")}
 )
 
 #' DrawSection
@@ -416,15 +405,37 @@ setGeneric("DrawSection",
 #### GP objects ####
 #' Predict
 #'
-#' Spatial interpolation at new locations.
+#' Predictions at new spatial locations.
 #'
 #' @param target The \code{spatial3DDataFrame} object to receive the prediction.
 #' @param to The name of the column in which to write the prediction. Will be
 #' overwritten if it exists or created if not.
 #' @param output.var Should the predictive variance be computed?
+#' @param output.ind Return indicators for boundary drawing?
+#' @param output.prob Return class probabilities?
+#' @param use.unknown Include the unknown class in output?
+#' @param Nsamp Number of samples used to estimate class probabilities.
 #'
 #' @return A 3D spatial object of the same class as \code{target}
 #' containing the predictions.
+#'
+#' @details \code{GP} and \code{SPGP} objects return the predicted mean and
+#' variance for each location in \code{target}. The sparse GP returns two
+#' variances: \code{var_full} represents the total prediction uncertainty while
+#' \code{var_cor} is the amplitude of variation of the underlying latent
+#' function. The proportion between the two varies according to the distance
+#' from the pseudo_inputs.
+#'
+#' The \code{GP_geomod} object will calculate an indicator and its variance
+#' for each class at each location, which jointly form a multivariate normal
+#' distribution of the true indicators (or log-transformed compositional
+#' coordinates). The returned probabilities are actually the proportion of this
+#' probability mass over the region in which each indicator is dominant. This
+#' quantity is approximated by drawing \code{Nsamp} samples from the
+#' distribution and computing the number of times each indicator is higher
+#' than the others. The \code{use.unknown = F} option simply drops the
+#' probability of the unknown class and re-normalizes the rest in order for
+#' them to add to 1.
 setGeneric("Predict",
            function(object, ...){standardGeneric("Predict")}
 )
@@ -433,27 +444,121 @@ setGeneric("Predict",
 #'
 #' Training of a Gaussian Process model with a genetic algorithm.
 #'
+#' @param contribution Optimize on the covariance model's amplitude?
+#' @param maxrange Optimize on the covariance model's range?
 #' @param midrange,minrange Optimize on the covariance model's anisotropy?
 #' @param azimuth,dip,rake Optimize on the covariance model's orientation?
 #' @param nugget Optimize on nugget?
 #' @param power Optimize on the power parameter (not relevant for all
 #' covariances)?
+#' @param pseudo_inputs Optimize on the pseudo-inputs' locations?
+#' @param pseudo_tangents Optimize on the pseudo-inputs' locations for
+#' derivative data?
+#' @param metric Which metric to optimize?
+#' @param ... Arguments passed on to \code{\link{ga}}, such as \code{maxiter},
+#' \code{popSize}, etc.
 #'
 #' @details This method uses a genetic algorithm to optimize the contribution
 #' (or amplitude) and range of each covariance structure contained in the
 #' \code{model} slot of \code{object}, as well as the parameters above, if
-#' allowed. Optimization is done with respect to the object's log-likelihood.
+#' allowed.
 #'
-#' By default the genetic algorithm will run for a maximum of 100 iterations or
-#' 20 iterations without improvement of the log-likelihood. If desired, this
-#' method can be called multiple times to continue the optimization starting
-#' from previous results.
+#' Optimization is done with respect to the specified metric. The available
+#' metrics are the log-likelihood (default), normalized root mean square error
+#' (NRMSE), and penalized log predictive density (PLPD). The latter two are
+#' determined by leave-one-out cross validation, which is slower than the
+#' log-likelihood.
+#'
+#' The positions of the pseudo-inputs may be constrained to match a subset of
+#' the data (\code{pseudo_inputs = "subset"}) or be free to lie anywhere
+#' inside the data`s bounding box (\code{pseudo_inputs = "free"}). The
+#' pseudo-tangents, however, must be a subset of the tangent data to avoid
+#' overfitting, as the tangents have a greater degree of freedom (position and
+#' direction).
+#'
+#' See the documentation in \code{\link{ga}} to control the optimization
+#' process. Standard GP uses continuous optimization to fit the parameters,
+#' using the current ones as a starting point. The sparse GP uses discrete
+#' optimization (with binary encoding) to fit the parameters and select the
+#' best positions for the pseudo-inputs. In both cases, it is
+#' recommnded to set the \code{popSize} around 20 and
+#' \code{pmutation} between 0.3 and 0.5. Convergence status can be visualized by
+#' setting \code{monitor = T}.
+#'
+#' The variational SPGP model may pose difficulties for training. It may help
+#' to train a FIC model (or a standard GP, using a subset of the data)
+#' to obtain the best covariance
+#' parameters and nugget and use them to build a variational SPGP object.
 #'
 #' In order to obtain reproducible results, set the seed before calling this
 #' method.
 #'
 #' @return A \code{GP} object similar to \code{object}, with optimized
 #' covariance parameters.
+#'
+#' @seealso \code{\link{covarianceStructure3D-class}},
+#' \code{\link{GP-init}}, \code{\link{SPGP-init}}
+#'
+#' @references
+#' Bauer, M.S., van der Wilk, M., Rasmussen, C.E., 2016. Understanding
+#' Probabilistic Sparse Gaussian Process Approximations. Adv. Neural Inf.
+#' Process. Syst. 29.
 setGeneric("Fit",
            function(object, ...){standardGeneric("Fit")}
+)
+
+#' Geostatistical simulation
+#'
+#' Generates a number of equally possible realizations of the modeled random
+#' field.
+#'
+#' @param object A \code{GP} object.
+#' @param target The \code{spatial3DDataFrame} object to receive the prediction.
+#' @param Nsim The desired number of simulations.
+#' @param to The name of the column in which to write the prediction. Will be
+#' overwritten if it exists or created if not.
+#' @param discount.noise Whether to sample from the GP latent function instead
+#' of the noisy values.
+#' @param smooth Whether to correct the output from the sparse GP.
+#' @param verbose Display status while running?
+#'
+#' @details Standard GP objects use the Cholesky method, which limits the number
+#' of data to be used and the number of test points in which to simulate. SPGP
+#' objects use a sequential method based on rank-one updates to the matrices
+#' involved, which only limits the number of pseudo-inputs that can be used.
+#'
+#' Due to the nature of the sparse approximation of the covariance matrices,
+#' the output may appear noisy even if \code{discount.noise = T}. Set
+#' \code{smooth = T} to apply a correction to the generated samples.
+#'
+#' @return A 3D spatial object of the same class as \code{target}
+#' containing the simulations.
+#'
+setGeneric("Simulate",
+           function(object, ...){standardGeneric("Simulate")}
+)
+
+#' Cross-validation
+#'
+#' Performs cross-validation and calculates a number of performance metrics
+#'
+#' @param object A \code{SPGP} object.
+#'
+#' @details The method performs leave-one-out cross-validation through
+#' rank-one downdates to a covariance matrix.
+#'
+#' @return A \code{list} with the following elements:
+#' \describe{
+#'   \item{mean}{The predictive mean for each data point.}
+#'   \item{var}{The predictive variance.}
+#'   \item{RMSE}{Root Mean Square Error of prediction, taking only the mean in
+#'   consideration}
+#'   \item{NRMSE}{Normalized RMSE: the squared difference is divided by the
+#'   predictive variance.}
+#'   \item{LPD}{Log Predictive Density.}
+#'   \item{PLPD}{Penalized LPD: includes a penalty based on how well the full
+#'   covariance is approximated at each data point.}
+#' }
+setGeneric("Xval",
+           function(object, ...){standardGeneric("Xval")}
 )

@@ -13,14 +13,16 @@ Implementation of the Gaussian Process model for 3D spatial interpolation.
 \describe{
 \item{\code{data}}{A \code{spatial3DDataFrame} object containing the necessary data.}
 
-\item{\code{tangents}}{A \code{points3DDataFrame} object containing structural
+\item{\code{tangents}}{A \code{directions3DDataFrame} object containing structural
 geology data. Most likely generated with the \code{GetLineDirections()}
-method.}
+or \code{GetPlaneDirections()} method.}
 
 \item{\code{model}}{The covariance model. A \code{list} containing one or more
 \code{covarianceStructure3D} objects.}
 
 \item{\code{nugget}}{The model's nugget effect or noise variance.}
+
+\item{\code{nugget.t}}{The nugget effect of the directional data.}
 
 \item{\code{mean}}{The global mean. Irrelevant if a trend is used.}
 

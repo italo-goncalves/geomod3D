@@ -3,18 +3,15 @@
 \docType{methods}
 \name{TrendMatrix}
 \alias{TrendMatrix}
-\alias{TrendMatrixD1}
 \alias{TrendMatrix,points3DDataFrame,character-method}
-\alias{TrendMatrixD1,points3DDataFrame,character-method}
+\alias{TrendMatrix,directions3DDataFrame,character-method}
 \title{Trend matrix}
 \usage{
 TrendMatrix(x, trend, ...)
 
-TrendMatrixD1(x, trend, ...)
-
 \S4method{TrendMatrix}{points3DDataFrame,character}(x, trend)
 
-\S4method{TrendMatrixD1}{points3DDataFrame,character}(x, trend)
+\S4method{TrendMatrix}{directions3DDataFrame,character}(x, trend)
 }
 \arguments{
 \item{x}{A 3D spatial object.}
@@ -30,9 +27,9 @@ Calculates a matrix containing the components of a trend function at the
 specified data locations.
 }
 \details{
-The \code{TrendMatrixD1()} method calculates the derivative of the
-trend function at the given locations. This is used in kriging systems
-involving derivative data.
+A call with a \code{directions3DDataFrame} as argument returns
+the derivative of the trend function at the given locations. This is used in
+situations involving derivative data.
 }
 \seealso{
 \code{\link{CovarianceMatrix}}
