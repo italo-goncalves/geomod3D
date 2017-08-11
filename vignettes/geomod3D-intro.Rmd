@@ -1,6 +1,6 @@
 ---
 title: "Introduction to geomod3D"
-author: "Italo Gomes Goncalves"
+author: "Ítalo Gomes Gonçalves"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -99,7 +99,7 @@ aspect3d(1.731788, 1, 0.2)
 axes3d()
 
 # Showing scene
-rglwidget(width = 800, height = 600)
+rglwidget(width = 800, height = 600, elementId = "holes", reuse = NA)
 ```
 
 ## Modeling
@@ -146,35 +146,66 @@ ara.point
 
 ### The implicit model
 
-The first step in implciit modeling is the definition of a covariance model. As
-the geological layers seem to be stratified, the range in the vertical 
-direction is made smaller than in the horizontal:
+The first step in implciit modeling is the definition of the best covariance 
+model. As the geological layers seem to be stratified, the range in the vertical 
+direction is made smaller than in the horizontal. Due to the sparse data, the
+same model will be used for all geological classes, and the parameters will
+be found using an exaustive search. The best fit criterion is the model's
+log-likelihood.
 
-```{r cov_model}
-cov_model <- covarianceStructure3D(type = "cubic", 
-                                   contribution = 0.1,
-                                   maxrange = 5000,
-                                   midrange = 5000,
-                                   minrange = 200)
+
+```{r search, cache=T}
+amplitude = seq(0.1, 1, 0.05)
+range = seq(5000, 10000, 500)
+nugget = seq(0.025, 0.3, 0.025)
+param_df <- expand.grid(amplitude = amplitude, range = range, nugget = nugget)
+param_df$logLik <- NA
+
+for (i in seq(nrow(param_df))){
+  cov_model <- covarianceStructure3D(type = "cubic", 
+                                   contribution = param_df$amplitude[i],
+                                   maxrange = param_df$range[i],
+                                   midrange = param_df$range[i],
+                                   minrange = 0.05 * param_df$range[i])
+  gp.model <- GP_geomod(data = ara.point, 
+                        value1 = "Form.up", 
+                        value2 = "Form.down",
+                        model = cov_model, 
+                        nugget = param_df$nugget[i])
+  param_df$logLik[i] <- logLik(gp.model)
+}
+
+# best parameters
+param_best <- param_df[which.max(param_df$logLik), ]
+param_best
 ```
 
-The parameters were arbitrarily chosen for this example, but the model will be
-properly trained later. Next we define a point grid over which to make the
+Next we define a point grid over which to make the
 predictions:
 
 ```{r grid}
-point.grid <- grid3DDataFrame(gridx = seq(647000, 661000, 200),
-                              gridy = seq(6791000, 6799000, 200),
-                              gridz = seq(-550, 50, 25), 
+point.grid <- grid3DDataFrame(gridx = seq(647000, 661000, 400),
+                              gridy = seq(6791000, 6799000, 400),
+                              gridz = seq(-550, 50, 12.5), 
                               fields = "Form")
 ```
 
 Then we build a Gaussian Process model and use it to make predictions:
 
 ```{r GP, cache=TRUE}
+cov_model <- covarianceStructure3D(type = "cubic", 
+                                   contribution = param_best$amplitude,
+                                   maxrange = param_best$range,
+                                   midrange = param_best$range,
+                                   minrange = 0.05 * param_best$range)
+
 gp.model <- GP_geomod(data = ara.point, 
-                      value1 = "Form.up", value2 = "Form.down",
-                      model = cov_model, nugget = 0.02)
+                      value1 = "Form.up", 
+                      value2 = "Form.down",
+                      model = cov_model, 
+                      nugget = param_best$nugget)
+
+set.seed(1234) # for reproducibility
 point.grid <- Predict(gp.model, target = point.grid, to = "Form")
 point.grid
 ```
@@ -226,7 +257,7 @@ aspect3d(1.731788, 1, 0.2)
 axes3d()
 
 # Display scene
-rglwidget(width = 800, height = 600) %>%
+rglwidget(width = 800, height = 600, elementId = "model1") %>%
   toggleWidget(ids = display1, label = "Recente") %>%
   toggleWidget(ids = display2, label = "Rio do Rasto") %>%
   toggleWidget(ids = display3, label = "Estrada Nova") %>%
@@ -239,40 +270,8 @@ The geological layers appear closed away from the data. This happens because
 the model steadily loses confidence as we move away from the data points. 
 Grid nodes in those regions receive the label `"Unknown"`.
 
-### Model training
-
-The model above was generated with arbitrary parameters. It uses the 
-log-likelihood as a goodness-of-fit measure:
-
-```{r loglik1}
-logLik(gp.model)
-```
-
-The `GP_geomod` class features a genetic algorithm that tries to improve the 
-log-likelihood by adjusting the parameters. This is done through the `Fit()` 
-method:
-
-```{r training, cache=TRUE}
-set.seed(1234) # for reproducibility
-gp.model.fitted <- Fit(gp.model, maxrange = T, minrange = T)
-logLik(gp.model.fitted)
-```
-
-We see that the new model fits the data better. The optimized parameters are:
-
-```{r opt_par}
-gp.model.fitted@GPs[[1]]@model
-gp.model.fitted@params$nugget
-```
-
-The new model can be checked by repeating the commands in the previous 
-sections:
-
-```{r GP2, cache=TRUE, echo=FALSE}
-point.grid <- Predict(gp.model.fitted, target = point.grid, to = "Form_fitted")
-```
-
-```{r model_vis2, echo=FALSE}
+The entropy can be used as another measure of uncertainty:
+```{r entropy, echo=T}
 # Opening rgl window to display in html page
 invisible(open3d(useNULL = T, windowRect = c(0,0,800,800), zoom = 1))
 
@@ -280,42 +279,24 @@ invisible(open3d(useNULL = T, windowRect = c(0,0,800,800), zoom = 1))
 DrawDrillholes(ara.dh, by = "Form", values = formval, col = formcolor,
                size = 100)
 
-# Contouring each indicator variable
-form <- Make3DArray(point.grid, "Form_fitted..Recente.ind")
-display1 <- contour3d(form$value, level = 0, 
-                      x = form$x, y = form$y, z = form$z, 
-                      color = "green", alpha = 1, add = T)
-form <- Make3DArray(point.grid, "Form_fitted..Rio.do.Rasto.ind")
-display2 <- contour3d(form$value, level = 0, 
-                      x = form$x, y = form$y, z = form$z, 
-                      color = "cornflowerblue", alpha = 1, add = T)
-form <- Make3DArray(point.grid, "Form_fitted..Estrada.Nova.ind")
-display3 <- contour3d(form$value, level = 0, 
-                      x = form$x, y = form$y, z = form$z, 
-                      color = "burlywood4", alpha = 1, add = T)
-form <- Make3DArray(point.grid, "Form_fitted..Irati.ind")
-display4 <- contour3d(form$value, level = 0, 
-                      x = form$x, y = form$y, z = form$z, 
-                      color = "firebrick", alpha = 1, add = T)
-form <- Make3DArray(point.grid, "Form_fitted..Palermo.ind")
-display5 <- contour3d(form$value, level = 0, 
-                      x = form$x, y = form$y, z = form$z, 
-                      color = "darkorchid", alpha = 1, add = T)
-form <- Make3DArray(point.grid, "Form_fitted..Rio.Bonito.ind")
-display6 <- contour3d(form$value, level = 0, 
-                      x = form$x, y = form$y, z = form$z, 
-                      color = "khaki", alpha = 1, add = T)
+entropy <- Make3DArray(point.grid, "Form..Entropy")
+e1 <- contour3d(entropy$value, level = quantile(entropy$value, probs = 0.1), 
+                      x = entropy$x, y = entropy$y, z = entropy$z, 
+                      color = "green", alpha = 0.5, add = T)
+e2 <- contour3d(entropy$value, level = quantile(entropy$value, probs = 0.5), 
+                      x = entropy$x, y = entropy$y, z = entropy$z, 
+                      color = "yellow", alpha = 0.5, add = T)
+e3 <- contour3d(entropy$value, level = quantile(entropy$value, probs = 0.9), 
+                      x = entropy$x, y = entropy$y, z = entropy$z, 
+                      color = "red", alpha = 0.5, add = T)
 
 # Aspect ratio and axes
 aspect3d(1.731788, 1, 0.2)
 axes3d()
 
-# Display scene
-rglwidget(width = 800, height = 600) %>%
-  toggleWidget(ids = display1, label = "Recente") %>%
-  toggleWidget(ids = display2, label = "Rio do Rasto") %>%
-  toggleWidget(ids = display3, label = "Estrada Nova") %>%
-  toggleWidget(ids = display4, label = "Irati") %>%
-  toggleWidget(ids = display5, label = "Palermo") %>%
-  toggleWidget(ids = display6, label = "Rio Bonito")
+rglwidget(width = 800, height = 600, elementId = "entropy") %>%
+  toggleWidget(ids = e1, label = "Low") %>%
+  toggleWidget(ids = e2, label = "Mid") %>%
+  toggleWidget(ids = e3, label = "High")
 ```
+

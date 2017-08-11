@@ -11,7 +11,9 @@ Open 3D geological data is *very* welcome. Send me an e-mail if you can provide
 some or if you know of a repository.
 
 You can install the package with the command 
-`devtools::install_github("italo-goncalves/geomod3D")`.
+`devtools::install_github("italo-goncalves/geomod3D")`. The 
+`build_vignette = T` option builds the vignette locally, but it can take a 
+few hours.
 
 TODO list:
 * Add data and a vignette containing structural measurements
