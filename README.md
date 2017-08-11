@@ -10,6 +10,8 @@ demonstration (if you have trouble viewing it, check the online version on
 Open 3D geological data is *very* welcome. Send me an e-mail if you can provide 
 some or if you know of a repository.
 
+You can install the package with the command 
+`devtools::install_github("italo-goncalves/geomod3D")`.
 
 TODO list:
 * Add data and a vignette containing structural measurements
