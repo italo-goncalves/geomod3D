@@ -402,7 +402,8 @@ setMethod(
     dup2 <- dup - 1
     # building new object
     new_points <- GetCoords(x)[dup]
-    new_df <- data.frame(xdata[dup2, "HOLEID"], xdata[dup2, by], xdata[dup, by])
+    new_df <- data.frame(xdata[dup2, "HOLEID"], xdata[dup2, by], xdata[dup, by],
+                         stringsAsFactors = F)
     colnames(new_df) <- c("HOLEID", paste0(by, c(".up", ".down")))
     return(points3DDataFrame(new_points, new_df))
   }

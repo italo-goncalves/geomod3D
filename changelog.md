@@ -1,3 +1,12 @@
+## Version 0.0.0.9002
+
+* Corrected a bug in `SPGP` object initialization the prevented the use of
+`points3DDataFrame` objects as pseudo-inputs
+* Corrected a bug that caused the `GetContacts()` method to covert the labels
+to factors
+* Corrected a bug in the `Predict()` method that caused an error for 
+`SPGP_geomod` objects
+
 ## Version 0.0.0.9001
 
 * Formalization of structural data as a `directions3DDataFrame` object

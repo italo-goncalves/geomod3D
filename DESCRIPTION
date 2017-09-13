@@ -1,6 +1,6 @@
 Package: geomod3D
 Title: Implicit 3D Geological Modeling and Geostatistics
-Version: 0.0.0.9001
+Version: 0.0.0.9002
 Authors@R: person("Italo", "Goncalves", email = "italogoncalves.igg@gmail.com", 
     role = c("aut", "cre"))
 Description: Implicit 3D geological modeling and visualization of 3D geospatial 

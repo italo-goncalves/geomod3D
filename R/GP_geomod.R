@@ -191,7 +191,9 @@ setMethod(
     for (i in seq(ncat)){
       tmp <- Predict(object@GPs[[i]], target, to = "value", output.var = T)
       indmat[, i] <- tmp[["value"]]
-      varmat[, i] <- tmp[["value.var"]] - object@GPs[[i]]@nugget
+      varstr <- ifelse(class(object@GPs[[i]]) == "SPGP",
+                       "value.var_full", "value.var")
+      varmat[, i] <- tmp[[varstr]] - object@GPs[[i]]@nugget
     }
 
     # probabilities

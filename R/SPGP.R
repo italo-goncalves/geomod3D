@@ -164,6 +164,8 @@ setMethod(
       ps <- data[sample(nrow(data), pseudo_inputs), c("value")]
     else if(class(pseudo_inputs) %in% c("matrix", "data.frame")) # coordinates given
       ps <- points3DDataFrame(pseudo_inputs)
+    else if (inherits(pseudo_inputs, "points3DDataFrame"))
+      ps <- pseudo_inputs
     .Object@pseudo_inputs <- ps
 
     # pseudo-tangents
