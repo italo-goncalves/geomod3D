@@ -399,3 +399,113 @@ NumericMatrix covd2_cauchy(NumericMatrix u, NumericMatrix v,
 
         return(wrap(C));
 }
+
+// [[Rcpp::export(.anisotropyC)]]
+NumericMatrix anisotropyC(double maxrange, double midrange, double minrange,
+                          double azimuth, double dip, double rake){
+
+  static const double pi = 3.14159265;
+
+  // conversion to radians
+  azimuth = azimuth * pi / 180;
+  dip = dip * pi / 180;
+  rake = rake * pi / 180;
+
+  // conversion to mathematical coordinates
+  dip = - dip;
+  arma::colvec r = arma::colvec(3);
+  r(0) = midrange; r(1) = maxrange; r(2) = minrange;
+
+  // rotarion matrices
+  arma::mat Rx = arma::mat(3, 3).eye();
+  arma::mat Ry = arma::mat(3, 3).eye();
+  arma::mat Rz = arma::mat(3, 3).eye();
+
+  Rx(0, 0) = cos(rake);
+  Rx(2, 0) = - sin(rake);
+  Rx(0, 2) = sin(rake);
+  Rx(2, 2) = cos(rake);
+
+  Ry(1, 1) = cos(dip);
+  Ry(2, 1) = sin(dip);
+  Ry(1, 2) = - sin(dip);
+  Ry(2, 2) = cos(dip);
+
+  Rz(0, 0) = cos(azimuth);
+  Rz(1, 0) = - sin(azimuth);
+  Rz(0, 1) = sin(azimuth);
+  Rz(1, 1) = cos(azimuth);
+
+  arma::mat A = arma::diagmat(r);
+
+  A = Rz * Ry * Rx * A;
+
+  return(wrap(A));
+}
+
+// [[Rcpp::export(cov_ns)]]
+NumericMatrix cov_ns(NumericMatrix x, NumericMatrix y,
+                     NumericVector x_sd, NumericVector y_sd,
+                     NumericVector x_maxrange, NumericVector y_maxrange,
+                     NumericVector x_midrange, NumericVector y_midrange,
+                     NumericVector x_minrange, NumericVector y_minrange,
+                     NumericVector x_azimuth, NumericVector y_azimuth,
+                     NumericVector x_dip, NumericVector y_dip,
+                     NumericVector x_rake, NumericVector y_rake,
+                     String type, double p = 1){
+
+  NumericMatrix K = NumericMatrix(x.nrow(), y.nrow());
+
+  for(int i = 0; i < x.nrow(); i++){
+    NumericMatrix Ax_R = anisotropyC(x_maxrange(i),
+                                     x_midrange(i),
+                                     x_minrange(i),
+                                     x_azimuth(i),
+                                     x_dip(i),
+                                     x_rake(i));
+    arma::mat Ax = arma::mat(Ax_R.begin(), Ax_R.nrow(), Ax_R.ncol(), false);
+    Ax = Ax.t() * Ax;
+
+    double Dx = pow(arma::det(Ax), 0.25);
+
+    for(int j = 0; j < y.nrow(); j++){
+      NumericMatrix Ay_R = anisotropyC(y_maxrange(j),
+                                       y_midrange(j),
+                                       y_minrange(j),
+                                       y_azimuth(j),
+                                       y_dip(j),
+                                       y_rake(j));
+      arma::mat Ay = arma::mat(Ay_R.begin(), Ay_R.nrow(), Ay_R.ncol(), false);
+      Ay = Ay.t() * Ay;
+
+      double Dy = pow(arma::det(Ay), 0.25);
+
+      arma::mat Amix = 0.5 * (Ax + Ay);
+      double Dmix = pow(arma::det(Amix), - 0.5);
+
+      // scaled distance
+      arma::vec dif = arma::vec(x.row(i) - y.row(j));
+      double d = sqrt(arma::as_scalar(dif.t() * arma::solve(Amix, dif)));
+
+      // correlation according to type
+      double cor = 0;
+      if(type == "gaussian") cor = exp(- 3 * pow(d, 2));
+      if(type == "exponential") cor = exp(- 3 * d);
+      if(type == "spherical") {
+        if(d <= 1) cor = 1 - 1.5 * d + 0.5 * pow(d, 3);
+      }
+      if(type == "cubic"){
+        if(d <= 1) cor =  1 - 7 * pow(d, 2) + 35 / 4 * pow(d, 3) -
+          7 / 2 * pow(d, 5) + 3 / 4 * pow(d, 7);
+        if(cor < 0) cor = 0; // weird bug gives negative values
+      }
+      if(type == "matern1") cor = (1 + 5 * d) * exp(- 5 * d);
+      if(type == "matern2") cor = (1 + 6 * d + 12 * pow(d, 2)) * exp(- 6 * d);
+      if(type == "cauchy") cor = pow(1 + pow(d, 2), - p);
+
+      K(i, j) = Dx * Dy * Dmix * cor * x_sd(i) * y_sd(j);
+    }
+  }
+
+  return(wrap(K));
+}

@@ -165,18 +165,62 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// anisotropyC
+NumericMatrix anisotropyC(double maxrange, double midrange, double minrange, double azimuth, double dip, double rake);
+RcppExport SEXP _geomod3D_anisotropyC(SEXP maxrangeSEXP, SEXP midrangeSEXP, SEXP minrangeSEXP, SEXP azimuthSEXP, SEXP dipSEXP, SEXP rakeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type maxrange(maxrangeSEXP);
+    Rcpp::traits::input_parameter< double >::type midrange(midrangeSEXP);
+    Rcpp::traits::input_parameter< double >::type minrange(minrangeSEXP);
+    Rcpp::traits::input_parameter< double >::type azimuth(azimuthSEXP);
+    Rcpp::traits::input_parameter< double >::type dip(dipSEXP);
+    Rcpp::traits::input_parameter< double >::type rake(rakeSEXP);
+    rcpp_result_gen = Rcpp::wrap(anisotropyC(maxrange, midrange, minrange, azimuth, dip, rake));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cov_ns
+NumericMatrix cov_ns(NumericMatrix x, NumericMatrix y, NumericVector x_sd, NumericVector y_sd, NumericVector x_maxrange, NumericVector y_maxrange, NumericVector x_midrange, NumericVector y_midrange, NumericVector x_minrange, NumericVector y_minrange, NumericVector x_azimuth, NumericVector y_azimuth, NumericVector x_dip, NumericVector y_dip, NumericVector x_rake, NumericVector y_rake, String type, double p);
+RcppExport SEXP _geomod3D_cov_ns(SEXP xSEXP, SEXP ySEXP, SEXP x_sdSEXP, SEXP y_sdSEXP, SEXP x_maxrangeSEXP, SEXP y_maxrangeSEXP, SEXP x_midrangeSEXP, SEXP y_midrangeSEXP, SEXP x_minrangeSEXP, SEXP y_minrangeSEXP, SEXP x_azimuthSEXP, SEXP y_azimuthSEXP, SEXP x_dipSEXP, SEXP y_dipSEXP, SEXP x_rakeSEXP, SEXP y_rakeSEXP, SEXP typeSEXP, SEXP pSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type x_sd(x_sdSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y_sd(y_sdSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type x_maxrange(x_maxrangeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y_maxrange(y_maxrangeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type x_midrange(x_midrangeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y_midrange(y_midrangeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type x_minrange(x_minrangeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y_minrange(y_minrangeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type x_azimuth(x_azimuthSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y_azimuth(y_azimuthSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type x_dip(x_dipSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y_dip(y_dipSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type x_rake(x_rakeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y_rake(y_rakeSEXP);
+    Rcpp::traits::input_parameter< String >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    rcpp_result_gen = Rcpp::wrap(cov_ns(x, y, x_sd, y_sd, x_maxrange, y_maxrange, x_midrange, y_midrange, x_minrange, y_minrange, x_azimuth, y_azimuth, x_dip, y_dip, x_rake, y_rake, type, p));
+    return rcpp_result_gen;
+END_RCPP
+}
 // sparse_sim
-NumericVector sparse_sim(IntegerVector path, double nugget, NumericVector w_, NumericMatrix Bi_, NumericMatrix KMi_, double maxvar, NumericMatrix K_, NumericVector d_, NumericVector yTR, NumericVector vTR, bool discount_noise, NumericVector Q_, bool smooth);
-RcppExport SEXP _geomod3D_sparse_sim(SEXP pathSEXP, SEXP nuggetSEXP, SEXP w_SEXP, SEXP Bi_SEXP, SEXP KMi_SEXP, SEXP maxvarSEXP, SEXP K_SEXP, SEXP d_SEXP, SEXP yTRSEXP, SEXP vTRSEXP, SEXP discount_noiseSEXP, SEXP Q_SEXP, SEXP smoothSEXP) {
+NumericVector sparse_sim(IntegerVector path, NumericVector nugget, NumericVector w_, NumericMatrix Bi_, NumericMatrix KMi_, NumericVector maxvar, NumericMatrix K_, NumericVector d_, NumericVector yTR, NumericVector vTR, bool discount_noise, NumericVector Q_, bool smooth, NumericVector randnum);
+RcppExport SEXP _geomod3D_sparse_sim(SEXP pathSEXP, SEXP nuggetSEXP, SEXP w_SEXP, SEXP Bi_SEXP, SEXP KMi_SEXP, SEXP maxvarSEXP, SEXP K_SEXP, SEXP d_SEXP, SEXP yTRSEXP, SEXP vTRSEXP, SEXP discount_noiseSEXP, SEXP Q_SEXP, SEXP smoothSEXP, SEXP randnumSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerVector >::type path(pathSEXP);
-    Rcpp::traits::input_parameter< double >::type nugget(nuggetSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type nugget(nuggetSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type w_(w_SEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type Bi_(Bi_SEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type KMi_(KMi_SEXP);
-    Rcpp::traits::input_parameter< double >::type maxvar(maxvarSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type maxvar(maxvarSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type K_(K_SEXP);
     Rcpp::traits::input_parameter< NumericVector >::type d_(d_SEXP);
     Rcpp::traits::input_parameter< NumericVector >::type yTR(yTRSEXP);
@@ -184,7 +228,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type discount_noise(discount_noiseSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type Q_(Q_SEXP);
     Rcpp::traits::input_parameter< bool >::type smooth(smoothSEXP);
-    rcpp_result_gen = Rcpp::wrap(sparse_sim(path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth));
+    Rcpp::traits::input_parameter< NumericVector >::type randnum(randnumSEXP);
+    rcpp_result_gen = Rcpp::wrap(sparse_sim(path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth, randnum));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -218,7 +263,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_geomod3D_covd2_matern2", (DL_FUNC) &_geomod3D_covd2_matern2, 5},
     {"_geomod3D_covd1_cauchy", (DL_FUNC) &_geomod3D_covd1_cauchy, 5},
     {"_geomod3D_covd2_cauchy", (DL_FUNC) &_geomod3D_covd2_cauchy, 6},
-    {"_geomod3D_sparse_sim", (DL_FUNC) &_geomod3D_sparse_sim, 13},
+    {"_geomod3D_anisotropyC", (DL_FUNC) &_geomod3D_anisotropyC, 6},
+    {"_geomod3D_cov_ns", (DL_FUNC) &_geomod3D_cov_ns, 18},
+    {"_geomod3D_sparse_sim", (DL_FUNC) &_geomod3D_sparse_sim, 14},
     {"_geomod3D_SPGP_CV", (DL_FUNC) &_geomod3D_SPGP_CV, 7},
     {NULL, NULL, 0}
 };

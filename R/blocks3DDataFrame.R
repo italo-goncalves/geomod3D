@@ -40,52 +40,44 @@ blocks3DDataFrame <- setClass(
 #' @param discretization A length 3 vector indicating in how many parts to
 #' "break" each block during the computations.
 #'
-#' @name blocks3DDataFrame-init
-setMethod(
-  f = "initialize",
-  signature = "blocks3DDataFrame",
-  definition = function(.Object, corner, number, size,
-                        discretization = c(4, 4, 4),
-                        fields = ".dummy"){
-    # dimensions
-    nx <- number[1]
-    ny <- number[2]
-    nz <- number[3]
-    .Object@dims <- matrix(c(nx, ny, nz), 1, 3)
-    colnames(.Object@dims) <- c("X","Y","Z")
+#' @name blocks3DDataFrame
+blocks3DDataFrame <- function(.Object, corner, number, size,
+                              discretization = c(4, 4, 4),
+                              fields = ".dummy"){
+  # dimensions
+  nx <- number[1]
+  ny <- number[2]
+  nz <- number[3]
+  dims <- matrix(c(nx, ny, nz), 1, 3)
+  colnames(dims) <- c("X","Y","Z")
 
-    # block centers
-    gridx <- seq(nx) * size[1] + corner[1] - size[1] / 2
-    gridy <- seq(ny) * size[2] + corner[2] - size[2] / 2
-    gridz <- seq(nz) * size[3] + corner[3] - size[3] / 2
-    coords <- c(
-      rep(gridx, times = ny * nz),
-      rep(gridy, each = nx, times = nz),
-      rep(gridz, each = nx * ny)
-    )
-    coords <- matrix(coords, nx * ny * nz, 3)
-    colnames(coords) <- c("X","Y","Z")
+  # block centers
+  gridx <- seq(nx) * size[1] + corner[1] - size[1] / 2
+  gridy <- seq(ny) * size[2] + corner[2] - size[2] / 2
+  gridz <- seq(nz) * size[3] + corner[3] - size[3] / 2
+  coords <- c(
+    rep(gridx, times = ny * nz),
+    rep(gridy, each = nx, times = nz),
+    rep(gridz, each = nx * ny)
+  )
+  coords <- matrix(coords, nx * ny * nz, 3)
+  colnames(coords) <- c("X","Y","Z")
 
-    # bounding box
-    .Object@bbox <- rbind(corner, corner + number * size)
-    colnames(.Object@bbox) <- c("X", "Y", "Z")
-    rownames(.Object@bbox) <- c("min", "max")
+  # bounding box
+  bbox <- rbind(corner, corner + number * size)
+  colnames(bbox) <- c("X", "Y", "Z")
+  rownames(bbox) <- c("min", "max")
 
-    # data
-    nf <- length(fields)
-    df <- data.frame(matrix(NA, nx * ny * nz, nf))
-    colnames(df) <- fields
+  # data
+  nf <- length(fields)
+  df <- data.frame(matrix(NA, nx * ny * nz, nf))
+  colnames(df) <- fields
 
-    # end
-    p3df <- points3DDataFrame(coords,df)
-    .Object@coords <- p3df@coords
-    .Object@data <- p3df@data
-    .Object@size <- size
-    .Object@discretization <- discretization
-    # validObject(.Object)
-    return(.Object)
-  }
-)
+  # end
+  p3df <- points3DDataFrame(coords,df)
+  new("blocks3DDataFrame", p3df, size = size, discretization = discretization,
+      bbox = bbox, dims = dims)
+}
 
 #### show ####
 setMethod(

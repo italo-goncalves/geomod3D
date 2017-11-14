@@ -39,41 +39,33 @@ grid3DDataFrame <- setClass(
 #' actually equally spaced in each direction. A future version will support
 #' rotated grids.
 #'
-#' @name grid3DDataFrame-init
-setMethod(
-  f = "initialize",
-  signature = "grid3DDataFrame",
-  definition = function(.Object, gridx, gridy, gridz, fields = ".dummy"){
-    # dimensions
-    nx <- length(gridx)
-    ny <- length(gridy)
-    nz <- length(gridz)
-    .Object@dims <- matrix(c(nx, ny, nz), 1, 3)
-    colnames(.Object@dims) <- c("X","Y","Z")
+#' @name grid3DDataFrame
+grid3DDataFrame <- function(gridx, gridy, gridz, fields = ".dummy"){
+  # dimensions
+  nx <- length(gridx)
+  ny <- length(gridy)
+  nz <- length(gridz)
+  dims <- matrix(c(nx, ny, nz), 1, 3)
+  colnames(dims) <- c("X","Y","Z")
 
-    # coordinates
-    coords <- c(
-      rep(gridx, times = ny * nz),
-      rep(gridy, each = nx, times = nz),
-      rep(gridz, each = nx * ny)
-    )
-    coords <- matrix(coords, nx * ny * nz, 3)
-    colnames(coords) <- c("X","Y","Z")
+  # coordinates
+  coords <- c(
+    rep(gridx, times = ny * nz),
+    rep(gridy, each = nx, times = nz),
+    rep(gridz, each = nx * ny)
+  )
+  coords <- matrix(coords, nx * ny * nz, 3)
+  colnames(coords) <- c("X","Y","Z")
 
-    # data
-    nf <- length(fields)
-    df <- data.frame(matrix(NA, nx * ny * nz, nf))
-    colnames(df) <- fields
+  # data
+  nf <- length(fields)
+  df <- data.frame(matrix(NA, nx * ny * nz, nf))
+  colnames(df) <- fields
 
-    # end
-    p3df <- points3DDataFrame(coords,df)
-    .Object@coords <- p3df@coords
-    .Object@data <- p3df@data
-    .Object@bbox <- p3df@bbox
-    # validObject(.Object)
-    return(.Object)
-  }
-)
+  # end
+  p3df <- points3DDataFrame(coords, df)
+  new("grid3DDataFrame", p3df, dims = dims)
+}
 
 #### show ####
 setMethod(

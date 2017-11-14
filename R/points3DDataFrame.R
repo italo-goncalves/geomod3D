@@ -20,14 +20,14 @@ points3DDataFrame <- setClass(
   validity = function(object) {
     if (length(object@coords) != nrow(object@data))
       stop("Number of coordinates does not match number of observations")
-    if (!all(rapply(object@coords,class) == "numeric"))
+    if (!all(rapply(object@coords, class) == "numeric"))
       stop(
         "Invalid object in points list. All objects must be of class 'numeric'"
       )
   }
 )
 
-#### initialization ####
+#### constructor ####
 #' 3D point cloud with attributes
 #'
 #' @param coords A list, matrix, or data frame containing the 3D coordinates
@@ -40,13 +40,13 @@ points3DDataFrame <- setClass(
 #' @seealso \code{\link{spatial3DDataFrame-class}},
 #' \code{\link{points3DDataFrame-class}}
 #'
-#' @name points3DDataFrame-init
-setMethod(
-  f = "initialize",
-  signature = "points3DDataFrame",
-  definition = function(.Object, coords, df){
+#' @name points3DDataFrame
+points3DDataFrame <- function(coords, df){
+
     # coordinates
-    if (any(class(coords) %in% c("matrix", "Matrix", "data.frame", "tbl_df"))){
+    if (missing(coords))
+      coords <- list()
+    else if (any(class(coords) %in% c("matrix", "Matrix", "data.frame", "tbl_df"))){
       coords <- as.matrix(coords)
       # enforcing 3D
       if (ncol(coords) > 3)
@@ -55,33 +55,46 @@ setMethod(
       # making list
       coords <- apply(coords, 1, function(x) list(x))
       coords <- lapply(coords, unlist)
-      .Object@coords <- coords
     }else if (class(coords) == "list"){
       if (!(all(sapply(coords, length) == 3)))
         stop("Invalid number of dimensions")
-      .Object@coords <- coords
     }else
       stop("Invalid format for coordinates")
     Ndata <- length(coords)
 
     # bounding box
     if (Ndata > 0){
-      points_df <- GetCoords(.Object, "data.frame")
+      points_df <- data.frame(t(sapply(coords, function(z) z)))
+      colnames(points_df) <- c("X", "Y", "Z")
       bbox <- as.matrix(rbind(
         apply(points_df, 2, min),
         apply(points_df, 2, max)))
       rownames(bbox) <- c("min", "max")
-      .Object@bbox <- bbox
     }else
-      .Object@bbox <- matrix(0, 2, 3)
+      bbox <- matrix(0, 2, 3)
 
     # data
     if (missing(df)) df <- data.frame(.dummy = rep(NA, Ndata))
-    .Object@data <- as.data.frame(df)
 
     # end
-    validObject(.Object)
-    return(.Object)
+    new("points3DDataFrame", coords = coords, bbox = bbox, data = df)
+  }
+
+#### [ ####
+setMethod(
+  f = "[",
+  signature = "spatial3DDataFrame",
+  definition = function(x,i,j,drop){
+    if (missing(i)) i <- seq(nrow(x))
+    if (class(i) == "character"){
+      j <- i
+      i <- seq(nrow(x))
+    }
+    coords_list <- GetCoords(x)
+    df <- GetData(x)
+    coords_sub <- coords_list[i]
+    df_sub <- df[i,j,drop=FALSE]
+    return(new(class(x), coords = coords_sub, data = df_sub))
   }
 )
 
@@ -122,21 +135,38 @@ setAs("points3DDataFrame", "data.frame", function(from, to)
 #' @rdname Bind
 setMethod("Bind", c("points3DDataFrame","points3DDataFrame"),
           function(x, y){
+
+            # coordinates
             coords <- rbind(
               GetCoords(x, "matrix"),
               GetCoords(y, "matrix"))
             row.names(coords) <- seq(nrow(coords))
+
+            # data
             datax <- GetData(x)
             datay <- GetData(y)
-            samecolsx <- colnames(datax) %in% colnames(datay)
-            samecolsy <- colnames(datay) %in% colnames(datax)
-            padx <- matrix(NA, nrow(x), sum(!samecolsy))
-            colnames(padx) <- colnames(datay[!samecolsy])
-            pady <- matrix(NA, nrow(y), sum(!samecolsx))
-            colnames(pady) <- colnames(datax[!samecolsx])
-            datax <- cbind(datax, padx)
-            datay <- cbind(datay, pady)
-            df <- merge(datax, datay, all=T, sort=F)
+            all.labels <- unique(c(colnames(datax), colnames(datay)))
+            newx <- data.frame(matrix(NA, nrow(x), length(all.labels)))
+            newy <- data.frame(matrix(NA, nrow(y), length(all.labels)))
+            colnames(newx) <- colnames(newy) <- all.labels
+            newx[, colnames(datax)] <- datax
+            newy[, colnames(datay)] <- datay
+            df <- rbind(newx, newy)
+
+            # # padding with NAs
+            # samecolsx <- colnames(datax) %in% colnames(datay)
+            # samecolsy <- colnames(datay) %in% colnames(datax)
+            # padx <- matrix(NA, nrow(x), sum(!samecolsy))
+            # colnames(padx) <- colnames(datay[!samecolsy])
+            # pady <- matrix(NA, nrow(y), sum(!samecolsx))
+            # colnames(pady) <- colnames(datax[!samecolsx])
+            # datax <- cbind(datax, padx)
+            # datay <- cbind(datay, pady)
+
+            # ordering columns
+
+
+            # df <- merge(datax, datay, all=T, sort=F)
             row.names(df) <- seq(nrow(df))
             return(points3DDataFrame(coords,df))
           })

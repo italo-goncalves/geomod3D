@@ -24,3 +24,4 @@ TODO list:
 * Speed up the `GP` class predictions
 * Add infrastructure for multivariate modeling
 * Move the nugget effect from the `GP` objects to the covariance model objects
+* Implement GPU computations

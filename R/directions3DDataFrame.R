@@ -41,11 +41,8 @@ directions3DDataFrame <- setClass(
 #' @seealso \code{\link{directions3DDataFrame-class}},
 #' \code{\link{points3DDataFrame-class}}
 #'
-#' @name directions3DDataFrame-init
-setMethod(
-  f = "initialize",
-  signature = "directions3DDataFrame",
-  definition = function(.Object, coords, df, directions){
+#' @name directions3DDataFrame
+directions3DDataFrame <- function(coords, df, directions){
 
     # coordinates
     if (any(class(coords) %in% c("matrix", "Matrix", "data.frame", "tbl_df"))){
@@ -57,25 +54,23 @@ setMethod(
       # making list
       coords <- apply(coords, 1, function(x) list(x))
       coords <- lapply(coords, unlist)
-      .Object@coords <- coords
     }else if (class(coords) == "list"){
       if (!(all(sapply(coords, length) == 3)))
         stop("Invalid number of dimensions")
-      .Object@coords <- coords
     }else
       stop("Invalid format for coordinates")
     Ndata <- length(coords)
 
     # bounding box
     if (Ndata > 0){
-      points_df <- GetCoords(.Object, "data.frame")
+      points_df <- data.frame(t(sapply(coords, function(z) z)))
+      colnames(points_df) <- c("X", "Y", "Z")
       bbox <- as.matrix(rbind(
         apply(points_df, 2, min),
         apply(points_df, 2, max)))
       rownames(bbox) <- c("min", "max")
-      .Object@bbox <- bbox
     }else
-      .Object@bbox <- matrix(0, 2, 3)
+      bbox <- matrix(0, 2, 3)
 
     # directions
     if (any(class(directions) %in% c("matrix", "Matrix",
@@ -91,23 +86,22 @@ setMethod(
                                         nrow(directions), 3)
 
       colnames(directions) <- c("dX", "dY", "dZ")
-      .Object@directions <- directions
     }else
       stop("Invalid format for directions")
 
     # data
     if (missing(df)) df <- data.frame(.dummy = rep(NA, Ndata))
-    .Object@data <- as.data.frame(df)
 
     # end
-    # validObject(.Object)
-    return(.Object)
+    new("directions3DDataFrame", coords = coords, data = df, bbox = bbox,
+        directions = directions)
   }
-)
+
 
 #### setAs ####
 setAs("NULL", "directions3DDataFrame", function(from, to)
-  new(to, list(), data.frame(), matrix(0, 0, 0)))
+  new(to, coords = list(), data = data.frame(), bbox = matrix(0, 0, 3),
+      directions = matrix(0, 0, 3)))
 setAs("directions3DDataFrame", "data.frame", function(from, to)
   cbind(GetCoords(from, "data.frame"), data.frame(from@directions),
         GetData(from)))
@@ -126,7 +120,8 @@ setMethod(
     coords_sub <- coords_list[i]
     df_sub <- df[i, j, drop = FALSE]
     dir_sub <- x@directions[i, j, drop = FALSE]
-    return(new(class(x), coords_sub, df_sub, dir_sub))
+    return(new(class(x), coords = coords_sub, data = df_sub,
+               directions = dir_sub))
   }
 )
 

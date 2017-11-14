@@ -31,6 +31,60 @@
   f2 <- as.formula(f2)
 }
 
+# sparse sequential simulation using GPU
+# .sparse_sim_gpu <- function(path, nugget, w, Bi, KMi, maxvar, K_TM,
+#                             d_T, yTR, vTR, discount_noise, Q_T, smooth){
+#
+#   w <- vclMatrix(as.numeric(w), length(w), 1)
+#   Bi <- vclMatrix(as.matrix(Bi))
+#   KMi <- vclMatrix(as.matrix(KMi))
+#   # K_TM <- gpuMatrix(as.matrix(K_TM))
+#   I <- vclMatrix(diag(1, nrow(Bi), ncol(Bi)))
+#
+#   vplus <- d_T + vTR
+#
+#   ysim <- matrix(rep(NA, length(path)))
+#
+#   for (i in seq_along(path)){
+#     k <- vclMatrix(K_TM[path[i], ], ncol(K_TM), 1)
+#
+#     # prediction
+#     mu <- (crossprod(k, (Bi %*% w)))[1]
+#     v <- Q_T[path[i]] - (crossprod(k, ((KMi - Bi) %*% k)))[1] + vplus[path[i]]
+#     if(v < 0) stop(paste("v =", v))
+#
+#     # simulation
+#     ysim[path[i]] <- rnorm(1, mu, sqrt(v))
+#
+#     # update
+#     k <- k / sqrt(d_T[path[i]] + nugget)
+#     tmp <- 1 /(1 + crossprod(k, (Bi %*% k)))
+#     Bi <- Bi %*% (I - k %*% crossprod(k, Bi)) * tmp[1]
+#     k <- k / sqrt(d_T[path[i]] + nugget)
+#     w <- w + ysim[path[i]] * k
+#
+#     rm(k)
+#   }
+#
+#   # smoothing
+#   if (smooth){
+#     ysim <- gpuMatrix(ysim)
+#     dnew <- gpuMatrix(matrix(1 / (maxvar - Q_T + 1e-9)))
+#     tmp <- gpuMatrix(rep(dnew[,], ncol(K_TM)), nrow(K_TM), ncol(K_TM))
+#     K_TM <- gpuMatrix(as.matrix(K_TM))
+#     Bnew <- solve(KMi) + crossprod(K_TM, (tmp * K_TM))
+#     Bnew <- Bnew + identity_matrix(nrow(Bi)) * 1e-6 # regularization
+#     ysim <- K_TM %*% solve(Bnew, crossprod(K_TM,  (ysim * dnew)));
+#   }
+#
+#   # adding noise
+#   if (!discount_noise)
+#     ysim <- as.numeric(ysim) + rnorm(length(ysim), sd = sqrt(nugget))
+#
+#   # end
+#   return(as.numeric(ysim) + yTR)
+# }
+
 #### drawing ####
 .find_color_cont <- function(values, rng = range(values), col,
                              na.color = NA){

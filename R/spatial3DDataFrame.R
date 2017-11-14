@@ -89,22 +89,11 @@ setMethod(
   }
 )
 
-#### [ ####
+#### str ####
 setMethod(
-  f = "[",
+  f = "str",
   signature = "spatial3DDataFrame",
-  definition = function(x,i,j,drop){
-    if (missing(i)) i <- seq(nrow(x))
-    if (class(i) == "character"){
-      j <- i
-      i <- seq(nrow(x))
-    }
-    coords_list <- GetCoords(x)
-    df <- GetData(x)
-    coords_sub <- coords_list[i]
-    df_sub <- df[i,j,drop=FALSE]
-    return(new(class(x), coords_sub, df_sub))
-  }
+  definition = function(object, ...) str(GetData(object), ...)
 )
 
 #### [<- ####

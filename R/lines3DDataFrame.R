@@ -66,11 +66,8 @@ lines3DDataFrame <- setClass(
 #' @seealso \code{\link{spatial3DDataFrame-class}},
 #' \code{\link{lines3DDataFrame-class}}
 #'
-#' @name lines3DDataFrame-init
-setMethod(
-  f = "initialize",
-  signature = "lines3DDataFrame",
-  definition = function(.Object, lines_list = NULL, df = NULL,
+#' @name lines3DDataFrame
+lines3DDataFrame <- function(lines_list = NULL, df = NULL,
                         collar = NULL, assay = NULL, survey = NULL,
                         holeid = "HOLEID", from = "FROM", to = "TO",
                         X = "X", Y = "Y", Z = "Z"){
@@ -102,21 +99,20 @@ setMethod(
     }
 
     ## building directly from list and data.frame
-    .Object@coords <- lines_list
-    .Object@data <- as.data.frame(df)
+    df <- as.data.frame(df)
+
     # bounding box
-    lines_df <- GetCoords(.Object,"data.frame")
-    names(lines_df) <- rep(c("X","Y","Z"),2)
-    lines_df <- rbind(lines_df[,1:3],lines_df[,4:6])
+    lines_df <- data.frame(t(sapply(lines_list, function(x) x)))
+    colnames(lines_df) <- rep(c("X","Y","Z"), 2)
+    lines_df <- rbind(lines_df[, 1:3],lines_df[, 4:6])
     bbox <- as.matrix(rbind(
       apply(lines_df,2,min),
       apply(lines_df,2,max)))
     rownames(bbox) <- c("min","max")
-    .Object@bbox <- bbox
-    validObject(.Object)
-    return(.Object)
+
+    # end
+    new("lines3DDataFrame", coords = lines_list, data = df, bbox = bbox)
   }
-)
 
 #### getCoords ####
 #' @rdname GetCoords

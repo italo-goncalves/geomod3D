@@ -2,10 +2,23 @@
 
 * Corrected a bug in `SPGP` object initialization the prevented the use of
 `points3DDataFrame` objects as pseudo-inputs
-* Corrected a bug that caused the `GetContacts()` method to covert the labels
+* Corrected a bug that caused the `GetContacts()` method to convert the labels
 to factors
 * Corrected a bug in the `Predict()` method that caused an error for 
 `SPGP_geomod` objects
+* Added a default for the `midrange` parameter in `anisotropy3d()` method
+* Corrected a bug in the `Simulate()` method for the standard GP
+* Added regularization to the smoothing covariance matrix for SPGP simulations
+* Corrected a bug in the `Simulate()` method for the SPGP, where the mean was not
+added back when making smoothed simulations
+* Corrected a bug in the `Simulate()` method for the SPGP, where the mean was 
+added improperly during the simulation, generating inflated values
+* SPGP simulation now uses only the approximated variance as prior to avoid
+value inflation
+* Creation of the `covarianceModel3D` class to handle the covariances and the
+nugget effect on the same object
+* `points3DDataFrame` can now be initialized with no arguments
+* Corrected the computations of the log-likelihood
 
 ## Version 0.0.0.9001
 

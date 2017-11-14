@@ -8,6 +8,7 @@ setGeneric("ncol")
 setGeneric("nrow")
 setGeneric("summary")
 setGeneric("as.data.frame")
+setGeneric("str")
 
 #### getters ####
 
@@ -257,7 +258,11 @@ setGeneric("GetLineDirections",
 #' @seealso \code{\link{covarianceStructure3D-class}},
 #' \code{\link{GetPlaneDirections}}
 setGeneric("CovarianceMatrix",
-           function(x, y, ...){standardGeneric("CovarianceMatrix")}
+           function(x, y, model, ...){standardGeneric("CovarianceMatrix")}
+)
+
+setGeneric("NuggetMatrix",
+           function(x, model, ...){standardGeneric("NuggetMatrix")}
 )
 
 #' Trend matrix

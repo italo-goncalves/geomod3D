@@ -21,7 +21,7 @@ NULL
 #' @return A 3x3 matrix. Multiplication of a matrix of coordinates by this
 #' matrix yields the transformed coordinates. Multiplication by its inverse
 #' reverses the effect.
-anisotropy3D <- function(maxrange, midrange, minrange = midrange,
+anisotropy3D <- function(maxrange, midrange = maxrange, minrange = midrange,
                          azimuth = 0, dip = 0, rake = 0, radians = F){
   # conversion to radians
   if(!radians){
@@ -51,15 +51,8 @@ anisotropy3D <- function(maxrange, midrange, minrange = midrange,
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix",
-  signature = c("lines3DDataFrame", "lines3DDataFrame"),
+  signature = c("lines3DDataFrame", "lines3DDataFrame", "covarianceModel3D"),
   definition = function(x, y = x, model, parts = 10){
-    # covariance model
-    if (length(model) == 1 & class(model) != "list"){
-      model <- list(model)
-    }
-    if (!all(rapply(model, class) == "covarianceStructure3D")){
-      stop("model must be of class 'covarianceStructure3D'")
-    }
 
     # line discretization
     xp <- Pointify(x, seq(0, 1, 1 / parts))
@@ -85,15 +78,8 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix",
-  signature = c("lines3DDataFrame", "points3DDataFrame"),
+  signature = c("lines3DDataFrame", "points3DDataFrame", "covarianceModel3D"),
   definition = function(x, y, model, parts = 10){
-    # covariance model
-    if (length(model) == 1 & class(model) != "list"){
-      model <- list(model)
-    }
-    if (!all(rapply(model, class) == "covarianceStructure3D")){
-      stop("model must be of class 'covarianceStructure3D'")
-    }
 
     # line discretization
     xp <- Pointify(x, seq(0, 1, 1 / parts))
@@ -117,7 +103,7 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix",
-  signature = c("points3DDataFrame", "lines3DDataFrame"),
+  signature = c("points3DDataFrame", "lines3DDataFrame", "covarianceModel3D"),
   definition = function(x, y, model, parts = 10){
     CovarianceMatrix(y, x, model, parts)
   }
@@ -126,25 +112,17 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix",
-  signature = c("points3DDataFrame","points3DDataFrame"),
+  signature = c("points3DDataFrame","points3DDataFrame", "covarianceModel3D"),
   definition = function(x, y = x, model){
     # setup
     Nrows <- nrow(x)
     Ncols <- nrow(y)
 
-    # covariance model
-    if (length(model) == 1 & class(model) != "list"){
-      model <- list(model)
-    }
-    if (!all(rapply(model, class) == "covarianceStructure3D")){
-      stop("model must be of class 'covarianceStructure3D'")
-    }
-
     # covariance matrix
     u <- GetCoords(x, as = "matrix")
     v <- GetCoords(y, as = "matrix")
     K <- matrix(0, Nrows, Ncols)
-    for (md in model)
+    for (md in model@structures)
       K <- K + md@covfun(u, v)
     return(K)
 
@@ -154,7 +132,7 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix", # value/derivative covariance
-  signature = c("points3DDataFrame", "directions3DDataFrame"),
+  signature = c("points3DDataFrame", "directions3DDataFrame", "covarianceModel3D"),
   definition = function(x, y, model){
     # setup
     Ndata <- nrow(x)
@@ -162,20 +140,12 @@ setMethod(
     xcoords <- GetCoords(x, "matrix")
     tcoords <- GetCoords(y, "matrix")
 
-    # covariance model
-    if (length(model) == 1 & class(model) != "list"){
-      model <- list(model)
-    }
-    if (!all(rapply(model, class) == "covarianceStructure3D")){
-      stop("model must be of class 'covarianceStructure3D'")
-    }
-
     # dip and strike vectors
     vec <- y@directions
 
     # covariance matrix
     K <- matrix(0, Ndata, Ntang)
-    for (md in model)
+    for (md in model@structures)
       K <- K + md@covd1(xcoords, tcoords, vec)
     return(K)
 
@@ -185,7 +155,7 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix", # derivative/value covariance
-  signature = c("directions3DDataFrame", "points3DDataFrame"),
+  signature = c("directions3DDataFrame", "points3DDataFrame", "covarianceModel3D"),
   definition = function(x, y, model){
     t(CovarianceMatrix(y, x, model))
   }
@@ -194,7 +164,7 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix", # derivative/derivative covariance
-  signature = c("directions3DDataFrame", "directions3DDataFrame"),
+  signature = c("directions3DDataFrame", "directions3DDataFrame", "covarianceModel3D"),
   definition = function(x, y = x, model){
     # setup
     Ntang1 <- nrow(x)
@@ -202,21 +172,13 @@ setMethod(
     tcoords1 <- GetCoords(x, "matrix")
     tcoords2 <- GetCoords(y, "matrix")
 
-    # covariance model
-    if (length(model) == 1 & class(model) != "list"){
-      model <- list(model)
-    }
-    if (!all(rapply(model, class) == "covarianceStructure3D")){
-      stop("model must be of class 'covarianceStructure3D'")
-    }
-
     # tangent vectors
     dirvecs1 <- x@directions
     dirvecs2 <- y@directions
 
     # covariance matrix
     K <- matrix(0, Ntang1, Ntang2)
-    for (md in model) {
+    for (md in model@structures) {
       K <- K + md@covd2(tcoords1, tcoords2, dirvecs1, dirvecs2)
     }
     return(K)
@@ -227,7 +189,7 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix", # point/block covariance
-  signature = c("points3DDataFrame", "blocks3DDataFrame"),
+  signature = c("points3DDataFrame", "blocks3DDataFrame", "covarianceModel3D"),
   definition = function(x, y, model){
 
     # setup
@@ -236,19 +198,11 @@ setMethod(
     yp <- Pointify(y)
     Ndisc <- prod(y@discretization)
 
-    # covariance model
-    if (length(model) == 1 & class(model) != "list"){
-      model <- list(model)
-    }
-    if (!all(rapply(model, class) == "covarianceStructure3D")){
-      stop("model must be of class 'covarianceStructure3D'")
-    }
-
     # covariance matrix
     u <- GetCoords(x, as = "matrix")
     v <- GetCoords(yp, as = "matrix")
     K <- matrix(0, Nrows, Ncols * Ndisc)
-    for (md in model)
+    for (md in model@structures)
       K <- K + md@covfun(u, v)
 
     # averaging
@@ -261,7 +215,7 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix", # block/point covariance
-  signature = c("blocks3DDataFrame", "points3DDataFrame"),
+  signature = c("blocks3DDataFrame", "points3DDataFrame", "covarianceModel3D"),
   definition = function(x, y, model){
     t(CovarianceMatrix(y, x, model))
   }
@@ -270,7 +224,7 @@ setMethod(
 #' @rdname CovarianceMatrix
 setMethod(
   f = "CovarianceMatrix", # block/block covariance
-  signature = c("blocks3DDataFrame", "blocks3DDataFrame"),
+  signature = c("blocks3DDataFrame", "blocks3DDataFrame", "covarianceModel3D"),
   definition = function(x, y = x, model){
 
     # setup
@@ -281,19 +235,11 @@ setMethod(
     yp <- Pointify(y)
     Ndiscy <- prod(y@discretization)
 
-    # covariance model
-    if (length(model) == 1 & class(model) != "list"){
-      model <- list(model)
-    }
-    if (!all(rapply(model, class) == "covarianceStructure3D")){
-      stop("model must be of class 'covarianceStructure3D'")
-    }
-
     # covariance matrix
     u <- GetCoords(xp, as = "matrix")
     v <- GetCoords(yp, as = "matrix")
     K <- matrix(0, Nrows * Ndiscx, Ncols * Ndiscy)
-    for (md in model)
+    for (md in model@structures)
       K <- K + md@covfun(u, v)
 
     # averaging
@@ -304,7 +250,18 @@ setMethod(
   }
 )
 
-## trend matrix
+#' @rdname CovarianceMatrix
+setMethod(
+  f = "NuggetMatrix",
+  signature = c("spatial3DDataFrame", "covarianceModel3D"),
+  definition = function(x, model){
+
+    K <- diag(model@nugget, nrow(x), nrow(x))
+    return(K)
+  }
+)
+
+#### trend matrix ####
 #' @rdname TrendMatrix
 setMethod(
   f = "TrendMatrix",
@@ -340,3 +297,10 @@ setMethod(
     return(dT)
   }
 )
+
+#### non-stationary covariance matrix ####
+#' #' @rdname CovarianceMatrix
+#' setMethod(
+#'   f = "CovarianceMatrixNonStat",
+#'   signature = c("points3DDataFrame", "points3DDataFrame")
+#' )

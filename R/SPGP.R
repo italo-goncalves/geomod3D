@@ -11,9 +11,7 @@ NULL
 #' @slot tangents A \code{directions3DDataFrame} object containing structural
 #' geology data. Most likely generated with the \code{GetLineDirections()}
 #' or \code{GetPlaneDirections()} method.
-#' @slot model The covariance model. A \code{list} containing one or more
-#' \code{covarianceStructure3D} objects.
-#' @slot nugget The model's nugget effect or noise variance.
+#' @slot model The covariance model. A \code{covarianceModel3D} object.
 #' @slot mean The global mean. Irrelevant if a trend is used.
 #' @slot trend The model's trend component. A formula in character format.
 #' @slot beta The trend coefficients.
@@ -64,7 +62,6 @@ SPGP <- setClass(
 #' \code{list} containing one or more such objects.
 #' @param value The column name of the variable to be modeled. It is assumed
 #' the column does not contain missing values.
-#' @param nugget The model's nugget effect or noise variance.
 #' @param mean The global mean. Irrelevant if a trend is provided.
 #' @param trend The model's trend component. A formula in character format.
 #' @param pseudo_inputs The desired number of pseudo-inputs (whose coordinates
@@ -102,7 +99,7 @@ SPGP <- setClass(
 #' less prone to overfitting. \code{variational = F} corresponds to the
 #' Fully Independent Conditional (FIC) approach.
 #'
-#' @name SPGP-init
+#' @name SPGP
 #'
 #' @seealso \code{\link{SPGP-class}}, \code{\link{GP-class}}
 #'
@@ -116,213 +113,222 @@ SPGP <- setClass(
 #' Bauer, M.S., van der Wilk, M., Rasmussen, C.E., 2016. Understanding
 #' Probabilistic Sparse Gaussian Process Approximations. Adv. Neural Inf.
 #' Process. Syst. 29.
-setMethod(
-  f = "initialize",
-  signature = "SPGP",
-  definition = function(.Object, data, model, value, nugget,
-                        mean = NULL, trend = NULL, pseudo_inputs,
-                        weights = NULL,
-                        force.interp = numeric(), reg.v = 1e-9,
-                        tangents = NULL, reg.t = 1e-12,
-                        pseudo_tangents = NULL, variational = T
-                        ){
-    require(Matrix)
+SPGP <- function(data, model, value,
+                 mean = NULL, trend = NULL, pseudo_inputs,
+                 weights = NULL,
+                 force.interp = numeric(), reg.v = 1e-9,
+                 tangents = NULL, reg.t = 1e-12,
+                 pseudo_tangents = NULL, variational = T){
 
-    # covariance model
-    if(length(model) == 1 & class(model) != "list")
-      .Object@model <- list(model)
-    else
-      .Object@model <- model
-    tot_var <- sum(sapply(.Object@model, function(md) md@contribution))
-
-    # value
-    if(length(value) == 1 & class(value) == "character")
-      data["value"] <- data[value]
-    else
-      data["value"] <- value
-    yval <- data[["value"]]
-    yval <- Matrix(yval, length(yval), 1)
-
-    # weights
-    if(is.null(weights)) weights <- rep(1, nrow(data))
-    data["weights"] <- weights
-
-    # interpolation
-    int <- rep(F, nrow(data))
-    int[force.interp] <- T
-    data["interpolate"] <- int
-
-    # mean
-    if(is.null(mean)) mean <- mean(yval)
-
-    # data
-    .Object@data <- data[, c("value", "weights", "interpolate")]
-    .Object@tangents <- as(tangents, "directions3DDataFrame")
-
-    # pseudo-inputs
-    if (class(pseudo_inputs) == "numeric") # number of inputs
-      ps <- data[sample(nrow(data), pseudo_inputs), c("value")]
-    else if(class(pseudo_inputs) %in% c("matrix", "data.frame")) # coordinates given
-      ps <- points3DDataFrame(pseudo_inputs)
-    else if (inherits(pseudo_inputs, "points3DDataFrame"))
-      ps <- pseudo_inputs
-    .Object@pseudo_inputs <- ps
-
-    # pseudo-tangents
-    if (!is.null(pseudo_tangents)){
-      if(class(pseudo_tangents) == "numeric") # number of inputs
-        pseudo_tangents <- tangents[sample(nrow(tangents), pseudo_tangents), ]
-      .Object@pseudo_tangents <- pseudo_tangents
-    }
-
-    # covariances
-    # pseudo-inputs
-    K_M <- Matrix(
-      CovarianceMatrix(ps, ps, model) + diag(reg.v, nrow(ps), nrow(ps))
-    )
-    # pseudo-tangents
-    if (!is.null(pseudo_tangents) && nrow(pseudo_tangents) > 0){
-      K_M1 <- Matrix(CovarianceMatrix(ps, pseudo_tangents, model))
-      K_M2 <- Matrix(CovarianceMatrix(pseudo_tangents, pseudo_tangents, model))
-      K_M2 <- K_M2 + diag(reg.t, nrow(K_M2), ncol(K_M2))
-      K_M <- rbind(
-        cbind(K_M, K_M1),
-        cbind(t(K_M1), K_M2)
-      )
-    }
-    # symmetry and Cholesky decomposition
-    K_M <- 0.5 * K_M + 0.5 * t(K_M)
-    L <- t(chol(K_M))
-
-    # data and tangents
-    K_NM <- Matrix(CovarianceMatrix(data, ps, model))
-    if(!is.null(pseudo_tangents) && nrow(pseudo_tangents) > 0){
-      K_NM <- cbind(K_NM,
-                    Matrix(CovarianceMatrix(data, pseudo_tangents, model)))
-    }
-    if (!is.null(tangents) && nrow(tangents) > 0){
-
-      K_tM <- t(Matrix(CovarianceMatrix(ps, tangents, model)))
-      if(!is.null(pseudo_tangents) && nrow(pseudo_tangents) > 0){
-        K_NM <- rbind(K_NM,
-                      cbind(K_tM, Matrix(CovarianceMatrix(
-                        tangents, pseudo_tangents, model
-                      ))))
-      }else{
-        K_NM <- rbind(K_NM, K_tM)
-      }
-    }
-    Ntang_ps <- nrow(.Object@pseudo_tangents)
-    Ntang <- nrow(.Object@tangents)
-
-    # approximated variance
-    Q <- colSums(solve(L, t(K_NM))^2)
-
-    # trend
-    if(is.null(trend) | length(trend) == 0){
-      H <- t(matrix(0, nrow(data) + Ntang, 0))
-    }else{
-      H <- t(TrendMatrix(data, trend))
-      if(!is.null(tangents) && nrow(tangents) > 0){
-        H <- cbind(H, t(TrendMatrix(tangents, trend)))
-      }
-      mean <- 0
-    }
-    Ntrend <- dim(H)[1]
-
-    # pre-computations
-    # mean
-    .Object@mean <- mean
-    yval <- yval - mean
-    yval <- rbind(yval, Matrix(rep(0, Ntang), Ntang, 1))
-    # delta
-    delta <- tot_var - Q
-    if (Ntang_ps > 0)
-      delta[-seq(nrow(data))] <- K_M2[1,1] - Q[-seq(nrow(data))]
-    nugget_data <- rep(nugget, nrow(data))
-    if (!is.null(weights)) nugget_data <- nugget_data / weights
-    nugget_data[force.interp] <- reg.v
-    nugget_data <- c(nugget_data, rep(reg.t, Ntang))
-    if (variational)
-      deltainv <- 1 /nugget_data
-    else
-      deltainv <- 1 / (delta + nugget_data)
-    # matrices
-    deltainv_mat <- Matrix(deltainv, nrow(data) + Ntang, nrow(ps) + Ntang_ps)
-    dinvK_NM <- deltainv_mat * K_NM
-    B <- K_M + t(K_NM) %*% dinvK_NM
-    Breg <- c(rep(reg.v, nrow(data)), rep(reg.t, nrow(.Object@tangents)))
-    B <- 0.5 * B + 0.5 * t(B) + diag(Breg, nrow(B), ncol(B)) # enforcing symmetry
-    Binv <- solve(Matrix(B))
-    K_Minv <- solve(Matrix(K_M))
-    w_value <- Binv %*% t(K_NM) %*% (deltainv * yval)
-
-    .Object@nugget <- nugget
-    .Object@pre_comp$w_value <- as.numeric(w_value)
-    .Object@pre_comp$w_var <- as.matrix(K_Minv - Binv)
-    .Object@pre_comp$B <- B
-    .Object@pre_comp$LM <- L
-    .Object@pre_comp$reg.v <- reg.v
-    .Object@pre_comp$reg.t <- reg.t
-    .Object@pre_comp$delta <- delta + nugget_data
-    .Object@pre_comp$K_NM <- K_NM
-    .Object@variational <- variational
-
-    if(Ntrend > 0){
-      F_ <- H %*% (matrix(deltainv, nrow(data) + Ntang, Ntrend) * t(H))
-      Fi <- solve(F_)
-      U <- H %*% dinvK_NM
-      # G <- Fi - Fi %*% U %*% solve(-B + t(U) %*% Fi %*% U, t(U) %*% Fi)
-      G <- F_ - U %*% Binv %*% t(U)
-      J <- H %*% (deltainv * yval) - U %*% w_value
-      beta <- solve(G, J)
-      I <- diag(1, nrow(ps) + Ntang_ps, nrow(ps) + Ntang_ps)
-      W_trend <- U %*% (Binv %*% (B-K_M) - I) %*% K_Minv
-
-      .Object@beta <- as.matrix(beta)
-      .Object@trend <- trend
-      .Object@pre_comp$w_trend <- W_trend
-      .Object@pre_comp$G <- G
-    }
-
-
-    # likelihood
-    AL <- t(chol(nugget * B))
-    gamma <- (delta + nugget_data) / nugget_data
-    if (variational) gamma <- rep(1, length(gamma))
-    ybar <- yval / sqrt(gamma)
-    K_NMbar <- K_NM * Matrix(1 / sqrt(gamma), nrow(data) + Ntang, nrow(ps) + Ntang_ps)
-
-    l1 <- - 0.5 * (sum(diag(AL) ^ 2) - sum(diag(L) ^ 2) + sum(gamma) +
-                     (nrow(K_NM) - ncol(K_NM)) * log(nugget))
-    l2 <- - 0.5 * (sum(ybar ^ 2) - sum(solve(AL, t(K_NMbar) %*% ybar) ^ 2)) / nugget
-
-
-    # tmp <- dinvK_NM %*% Binv %*% (t(dinvK_NM) %*% yval)
-    # l1 <- -0.5 * sum(yval * (deltainv * yval - tmp))
-    # l2 <- -0.5 * (sum(delta + nugget_data) +
-    #                 determinant(K_Minv)$modulus +
-    #                 determinant(K_M + t(K_NM) %*%
-    #                               dinvK_NM)$modulus)
-    if (variational)
-      l3 <- - 0.5 * sum(delta / nugget_data) # trace term
-    else
-      l3 <- 0
-    lik <- l1 + l2 + l3 - 0.5 * length(yval) * log(2*pi)
-
-    if(Ntrend > 0){
-      l4 <- 0.5 * determinant(t(J) %*% beta)$modulus
-      l5 <- 0.5 * determinant(G)$modulus
-      lik <- lik + l4 - l5 + 0.5 * Ntrend * log(2*pi)
-    }
-
-    .Object@likelihood <- as.numeric(lik)
-
-    # end
-    # validObject(.Object)
-    return(.Object)
+  # setup
+  if (is.null(tangents))
+    tangents <- as(tangents, "directions3DDataFrame")
+  if (is.null(pseudo_tangents))
+    pseudo_tangents <- as(pseudo_tangents, "directions3DDataFrame")
+  if (is.null(trend)){
+    trend <- as.character(trend)
+    beta <- matrix(0, 0, 0)
   }
-)
+
+
+  # pseudo-inputs
+  if (class(pseudo_inputs) == "numeric" && nrow(data) >= pseudo_inputs) # number of inputs
+    ps <- data[sample(nrow(data), pseudo_inputs), c("value")]
+  else if(class(pseudo_inputs) %in% c("matrix", "data.frame")) # coordinates given
+    ps <- points3DDataFrame(pseudo_inputs)
+  else if (inherits(pseudo_inputs, "points3DDataFrame"))
+    ps <- pseudo_inputs
+  else
+    stop("invalid format for pseudo-inputs")
+
+  # pseudo-tangents
+  if (!is.null(pseudo_tangents)){
+    if(class(pseudo_tangents) == "numeric") # number of inputs
+      pseudo_tangents <- tangents[sample(nrow(tangents), pseudo_tangents), ]
+  }
+
+  # covariance matrix of pseudo-inputs
+  K_M <- Matrix(
+    CovarianceMatrix(ps, ps, model) + diag(reg.v, nrow(ps), nrow(ps)),
+    sparse = F
+  )
+  # pseudo-tangents
+  if (!is.null(pseudo_tangents) && nrow(pseudo_tangents) > 0){
+    K_M1 <- Matrix(CovarianceMatrix(ps, pseudo_tangents, model))
+    K_M2 <- Matrix(CovarianceMatrix(pseudo_tangents, pseudo_tangents, model))
+    K_M2 <- K_M2 + diag(reg.t, nrow(K_M2), ncol(K_M2))
+    K_M <- rbind(
+      cbind(K_M, K_M1),
+      cbind(t(K_M1), K_M2)
+    )
+  }
+  # symmetry and Cholesky decomposition
+  K_M <- 0.5 * K_M + 0.5 * t(K_M)
+  L <- t(chol(K_M))
+
+  # if data is empty
+  if (nrow(data) == 0){
+    if(is.null(mean)) mean <- 0
+
+    return(new("SPGP", data = data,
+               tangents = as(tangents, "directions3DDataFrame"),
+               model = model, mean = mean, variational = variational,
+               likelihood = as.numeric(NA), trend = trend, beta = beta,
+               pseudo_inputs = ps, pseudo_tangents = pseudo_tangents,
+               pre_comp = list(LM = L, reg.v = reg.v, reg.t = reg.t)))
+  }
+
+  # value
+  if(length(value) == 1 & class(value) == "character")
+    data["value"] <- data[value]
+  else
+    data["value"] <- value
+  yval <- data[["value"]]
+  yval <- Matrix(yval, length(yval), 1)
+
+  # weights
+  if(is.null(weights)) weights <- rep(1, nrow(data))
+  data["weights"] <- weights
+
+  # interpolation
+  int <- rep(F, nrow(data))
+  int[force.interp] <- T
+  data["interpolate"] <- int
+
+  # mean
+  if(is.null(mean)) mean <- mean(yval)
+
+  # data
+  data2 <- data[, c("value", "weights", "interpolate")]
+  tangents <- as(tangents, "directions3DDataFrame")
+
+  # covariance matrix of data and tangents
+  K_NM <- Matrix(CovarianceMatrix(data, ps, model), sparse = F)
+  if(!is.null(pseudo_tangents) && nrow(pseudo_tangents) > 0){
+    K_NM <- cbind(K_NM,
+                  Matrix(CovarianceMatrix(data, pseudo_tangents, model)))
+  }
+  if (!is.null(tangents) && nrow(tangents) > 0){
+
+    K_tM <- t(Matrix(CovarianceMatrix(ps, tangents, model)))
+    if(!is.null(pseudo_tangents) && nrow(pseudo_tangents) > 0){
+      K_NM <- rbind(K_NM,
+                    cbind(K_tM, Matrix(CovarianceMatrix(
+                      tangents, pseudo_tangents, model
+                    ))))
+    }else{
+      K_NM <- rbind(K_NM, K_tM)
+    }
+  }
+  Ntang_ps <- nrow(pseudo_tangents)
+  Ntang <- nrow(tangents)
+
+  # approximated variance
+  Q <- colSums(solve(L, t(K_NM))^2)
+
+  # trend
+  if(is.null(trend) | length(trend) == 0){
+    H <- t(matrix(0, nrow(data) + Ntang, 0))
+  }else{
+    H <- t(TrendMatrix(data, trend))
+    if(!is.null(tangents) && nrow(tangents) > 0){
+      H <- cbind(H, t(TrendMatrix(tangents, trend)))
+    }
+    mean <- 0
+  }
+  Ntrend <- dim(H)[1]
+
+  # pre-computations
+  # mean
+  yval <- yval - mean
+  yval <- rbind(yval, Matrix(rep(0, Ntang), Ntang, 1))
+  # delta
+  delta <- model@total.var - Q
+  if (Ntang_ps > 0)
+    delta[-seq(nrow(data))] <- K_M2[1,1] - Q[-seq(nrow(data))]
+  nugget_data <- rep(model@nugget, nrow(data))
+  if (!is.null(weights)) nugget_data <- nugget_data / weights
+  nugget_data[force.interp] <- reg.v
+  nugget_data <- c(nugget_data, rep(reg.t, Ntang))
+  if (variational)
+    deltainv <- 1 /nugget_data
+  else
+    deltainv <- 1 / (delta + nugget_data)
+  # matrices
+  deltainv_mat <- Matrix(deltainv, nrow(data) + Ntang, nrow(ps) + Ntang_ps)
+  dinvK_NM <- deltainv_mat * K_NM
+  B <- K_M + t(K_NM) %*% dinvK_NM
+  Breg <- c(rep(reg.v, nrow(data)), rep(reg.t, nrow(tangents)))
+  B <- 0.5 * B + 0.5 * t(B) + diag(Breg, nrow(B), ncol(B)) # enforcing symmetry
+  Binv <- solve(Matrix(B, sparse = F))
+  K_Minv <- solve(Matrix(K_M))
+  w_value <- Binv %*% t(K_NM) %*% (deltainv * yval)
+
+  pre_comp <- list()
+  pre_comp$w_value <- as.numeric(w_value)
+  pre_comp$w_var <- as.matrix(K_Minv - Binv)
+  pre_comp$B <- B
+  pre_comp$LM <- L
+  pre_comp$reg.v <- reg.v
+  pre_comp$reg.t <- reg.t
+  pre_comp$delta <- delta + nugget_data
+  pre_comp$K_NM <- K_NM
+
+  if(Ntrend > 0){
+    F_ <- H %*% (matrix(deltainv, nrow(data) + Ntang, Ntrend) * t(H))
+    Fi <- solve(F_)
+    U <- H %*% dinvK_NM
+    # G <- Fi - Fi %*% U %*% solve(-B + t(U) %*% Fi %*% U, t(U) %*% Fi)
+    G <- F_ - U %*% Binv %*% t(U)
+    J <- H %*% (deltainv * yval) - U %*% w_value
+    beta <- solve(G, J)
+    I <- diag(1, nrow(ps) + Ntang_ps, nrow(ps) + Ntang_ps)
+    W_trend <- U %*% (Binv %*% (B-K_M) - I) %*% K_Minv
+
+    beta <- as.matrix(beta)
+    pre_comp$w_trend <- W_trend
+    pre_comp$G <- G
+  }
+
+
+  # likelihood
+  AL <- t(chol(model@nugget * B))
+  gamma <- (delta + nugget_data) / nugget_data
+  if (variational) gamma <- rep(1, length(gamma))
+  ybar <- yval / sqrt(gamma)
+  K_NMbar <- K_NM * Matrix(1 / sqrt(gamma), nrow(data) + Ntang, nrow(ps) + Ntang_ps)
+
+  l1 <- - 0.5 * (sum(log(diag(AL))) - sum(log(diag(L))) + sum(gamma) +
+                   (nrow(K_NM) - ncol(K_NM)) * log(model@nugget))
+  l2 <- - 0.5 * (sum(ybar ^ 2) - sum(solve(AL, t(K_NMbar) %*% ybar) ^ 2)) / model@nugget
+
+
+  # tmp <- dinvK_NM %*% Binv %*% (t(dinvK_NM) %*% yval)
+  # l1 <- -0.5 * sum(yval * (deltainv * yval - tmp))
+  # l2 <- -0.5 * (sum(delta + nugget_data) +
+  #                 determinant(K_Minv)$modulus +
+  #                 determinant(K_M + t(K_NM) %*%
+  #                               dinvK_NM)$modulus)
+  if (variational)
+    l3 <- - 0.5 * sum(delta / nugget_data) # trace term
+  else
+    l3 <- 0
+  lik <- l1 + l2 + l3 - 0.5 * length(yval) * log(2*pi)
+
+  if(Ntrend > 0){
+    l4 <- 0.5 * determinant(t(J) %*% beta)$modulus
+    l5 <- 0.5 * determinant(G)$modulus
+    lik <- lik + l4 - l5 + 0.5 * Ntrend * log(2*pi)
+  }
+
+  # end
+  new("SPGP", data = data2,
+      tangents = as(tangents, "directions3DDataFrame"),
+      model = model, mean = mean, variational = variational,
+      likelihood = as.numeric(lik), trend = as.character(trend), beta = beta,
+      pseudo_inputs = ps, pseudo_tangents = pseudo_tangents,
+      pre_comp = pre_comp)
+}
 
 #### show ####
 setMethod(
@@ -357,6 +363,16 @@ setMethod(
   signature = "SPGP",
   definition = function(object, target, to = "value", output.var = T){
 
+    # trivial solution
+    if(object@model@total.var == 0){
+      target[, to] <- object@mean
+      if(output.var){
+        target[paste0(to, ".var_full")] <- 0
+        target[paste0(to, ".var_cor")] <- 0
+      }
+      return(target)
+    }
+
     # covariances
     ps <- object@pseudo_inputs
     Ktarget <- CovarianceMatrix(target, ps, object@model)
@@ -367,11 +383,21 @@ setMethod(
     }
 
     # full variance
-    tot_var <- sum(sapply(object@model, function(m) m@contribution)) + object@nugget
+    tot_var <- object@model@total.var + object@model@nugget
 
     # correlated variance
     L <- object@pre_comp$LM
     Q_T <- colSums(solve(L, t(Ktarget))^2)
+
+    # no data case
+    if(nrow(object@data) == 0){
+      target[, to] <- object@mean
+      if(output.var){
+        target[paste0(to, ".var_full")] <- tot_var
+        target[paste0(to, ".var_cor")] <- Q_T
+      }
+      return(target)
+    }
 
     # trend
     if(length(object@trend) > 0){
@@ -384,9 +410,7 @@ setMethod(
 
     # mean
     w_value <- object@pre_comp$w_value
-    pred_mean <- apply(Ktarget, 1, function(rw){
-      sum(rw * w_value)
-    })
+    pred_mean <- apply(Ktarget, 1, function(rw) sum(rw * w_value))
     if(length(object@trend) > 0) pred_mean <- pred_mean + t(R) %*% beta
     target[to] <- pred_mean[1:nrow(target)] + object@mean
 
@@ -435,7 +459,7 @@ setMethod(
     Ndata <- nrow(object@data)
     Ntang <- nrow(object@tangents)
     data_var <- var(object@data[["value"]])
-    data_nugget <- object@nugget
+    data_nugget <- object@model@nugget
     Nps <- nrow(object@pseudo_inputs)
     Ntang_ps <- nrow(object@pseudo_tangents)
     metric <- metric[1]
@@ -489,7 +513,7 @@ setMethod(
       xdec <- .decodeString(x, bits)
 
       # covariance model
-      m <- object@model
+      m <- object@model@structures
       for(i in 1:Nstruct){
         tmp <- numeric(8)
         # contribution
@@ -578,7 +602,7 @@ setMethod(
         xdec <- xdec[-1]
       }
       else
-        nug <- object@nugget
+        nug <- object@model@nugget
 
       # pseudo-inputs (subset of data)
       if (pseudo_inputs == "subset"){
@@ -610,9 +634,8 @@ setMethod(
       # temporary GP
       tmpgp <- SPGP(
         data = object@data,
-        model = m,
+        model = covarianceModel3D(nug, m),
         value = "value",
-        nugget = nug,
         mean = object@mean,
         trend = object@trend,
         tangents = object@tangents,
@@ -656,303 +679,52 @@ setMethod(
   }
 )
 
-# setMethod(
-#   f = "Fit",
-#   signature = "SPGP",
-#   definition = function(object, contribution = F, maxrange = F,
-#                         midrange = F, minrange = F,
-#                         azimuth = F, dip = F, rake = F, pseudo_inputs = F,
-#                         pseudo_tangents = F,
-#                         power = F, nugget = F, nugget_ps = F,
-#                         nugget.fix = numeric(),
-#                         monitor = F){
-#     require(GA)
-#
-#     # setup
-#     structures <- sapply(object@model, function(x) x@type)
-#     Nstruct <- length(structures)
-#     Ndata <- nrow(object@data)
-#     Ntang <- nrow(object@tangents)
-#     data_var <- var(object@data[["value"]])
-#     data_nugget <- object@nugget
-#     Nps <- nrow(object@pseudo_inputs)
-#     Ntang_ps <- nrow(object@pseudo_tangents)
-#
-#     # bounding box
-#     data_box <- BoundingBox(object@data)
-#     if(Ntang > 0){
-#       tang_box <- BoundingBox(object@tangents)
-#       data_box[1, ] <- apply(rbind(data_box[1, ], tang_box[1, ]), 2, min)
-#       data_box[2, ] <- apply(rbind(data_box[2, ], tang_box[2, ]), 2, max)
-#     }
-#     data_rbase <- sqrt(sum(data_box[1,] - data_box[2,])^2)
-#
-#     # optimization limits and starting point
-#     opt_min <- opt_max <- numeric(Nstruct * 8 + 1 + Nps * 4 + Ntang_ps * 6)
-#     xstart <- matrix(0, 1, Nstruct * 8 + 1 + Nps * 4 + Ntang_ps * 6)
-#     for(i in 1:Nstruct){
-#       # contribution
-#       if(contribution){
-#         opt_min[(i-1)*8+1] <- data_var / 1000
-#         opt_max[(i-1)*8+1] <- data_var * 10
-#       }else{
-#         opt_min[(i-1)*8+1] <- object@model[[i]]@contribution
-#         opt_max[(i-1)*8+1] <- object@model[[i]]@contribution
-#       }
-#       xstart[(i-1)*8+1] <- object@model[[i]]@contribution
-#
-#       # maxrange
-#       if(maxrange){
-#         opt_min[(i-1)*8+2] <- data_rbase / 100
-#         opt_max[(i-1)*8+2] <- data_rbase * 2
-#       }else{
-#         opt_min[(i-1)*8+2] <- object@model[[i]]@maxrange
-#         opt_max[(i-1)*8+2] <- object@model[[i]]@maxrange
-#       }
-#       xstart[(i-1)*8+2] <- object@model[[i]]@maxrange
-#
-#       # midrange (multiple of maxrange)
-#       if(midrange)
-#         opt_min[(i-1)*8+3] <- 0.01
-#       else
-#         opt_min[(i-1)*8+3] <- 1
-#       opt_max[(i-1)*8+3] <- 1
-#       xstart[(i-1)*8+3] <- object@model[[i]]@midrange /
-#         object@model[[i]]@maxrange
-#
-#       # minrange(multiple of midrange)
-#       if(minrange)
-#         opt_min[(i-1)*8+4] <- 0.01
-#       else
-#         opt_min[(i-1)*8+4] <- 1
-#       opt_max[(i-1)*8+4] <- 1
-#       xstart[(i-1)*8+4] <- object@model[[i]]@minrange /
-#         object@model[[i]]@midrange
-#
-#       # azimuth
-#       opt_min[(i-1)*8+5] <- 0
-#       if(azimuth)
-#         opt_max[(i-1)*8+5] <- 360
-#       else
-#         opt_max[(i-1)*8+5] <- 0
-#       xstart[(i-1)*8+5] <- object@model[[i]]@azimuth
-#
-#       # dip
-#       opt_min[(i-1)*8+6] <- 0
-#       if(dip)
-#         opt_max[(i-1)*8+6] <- 90
-#       else
-#         opt_max[(i-1)*8+6] <- 0
-#       xstart[(i-1)*8+6] <- object@model[[i]]@dip
-#
-#       # rake
-#       opt_min[(i-1)*8+7] <- 0
-#       if(rake)
-#         opt_max[(i-1)*8+7] <- 90
-#       else
-#         opt_max[(i-1)*8+7] <- 0
-#       xstart[(i-1)*8+7] <- object@model[[i]]@rake
-#
-#       # power
-#       if(power){
-#         opt_min[(i-1)*8+8] <- 0.1
-#         opt_max[(i-1)*8+8] <- 3
-#       }
-#       else{
-#         opt_min[(i-1)*8+8] <- 1
-#         opt_max[(i-1)*8+8] <- 1
-#       }
-#       xstart[(i-1)*8+8] <- object@model[[i]]@power
-#     }
-#
-#     # nugget
-#     if(nugget){
-#       opt_min[Nstruct * 8 + 1] <- data_var/1000
-#       opt_max[Nstruct * 8 + 1] <- data_var*2
-#     }
-#     else{
-#       opt_min[Nstruct * 8 + 1] <- 0 # not used
-#       opt_max[Nstruct * 8 + 1] <- 0 # not used
-#     }
-#     xstart[Nstruct * 8 + 1] <- mean(data_nugget)
-#
-#     # pseudo_inputs
-#     if(pseudo_inputs){
-#       opt_min[(Nstruct * 8 + 2):(Nstruct * 8 + 1 + 3 * Nps)] <-
-#         rep(data_box[1,], each = Nps)
-#       opt_max[(Nstruct * 8 + 2):(Nstruct * 8 + 1 + 3 * Nps)] <-
-#         rep(data_box[2,], each = Nps)
-#     }
-#     else{
-#       opt_min[(Nstruct * 8 + 2):(Nstruct * 8 + 1 + 3 * Nps)] <-
-#         as.numeric(object@pseudo_inputs)
-#       opt_max[(Nstruct * 8 + 2):(Nstruct * 8 + 1 + 3 * Nps)] <-
-#         as.numeric(object@pseudo_inputs)
-#     }
-#     xstart[(Nstruct * 8 + 2):(Nstruct * 8 + 1 + 3 * Nps)] <-
-#       as.numeric(object@pseudo_inputs)
-#
-#     # pseudo_inputs (nugget)
-#     pos <- Nstruct * 8 + 1 + 3 * Nps + 1
-#     if(nugget_ps){
-#       opt_min[pos:(pos + Nps - 1)] <- data_var/1000
-#       opt_max[pos:(pos + Nps - 1)] <- data_var*2
-#     }
-#     else{
-#       opt_min[pos:(pos + Nps - 1)] <- 0
-#       opt_max[pos:(pos + Nps - 1)] <- 0
-#     }
-#     xstart[pos:(pos + Nps - 1)] <- object@nugget_ps
-#
-#     # pseudo_tangents
-#     pos <- Nstruct * 8 + 1 + Nps * 4 + 1
-#     if(pseudo_tangents){
-#       opt_min[pos:(pos + 3 * Ntang_ps - 1)] <-
-#         rep(data_box[1, ], each = Ntang_ps)
-#       opt_max[pos:(pos + 3 * Ntang_ps - 1)] <-
-#         rep(data_box[2,], each = Ntang_ps)
-#       pos <- pos + Ntang_ps * 3
-#       opt_min[pos:(pos + 3 * Ntang_ps - 1)] <- -1
-#       opt_max[pos:(pos + 3 * Ntang_ps - 1)] <- 1
-#     }
-#     else{
-#       opt_min[pos:(pos + 3 * Ntang_ps - 1)] <-
-#         as.numeric(GetCoords(object@pseudo_tangents, "matrix"))
-#       opt_max[pos:(pos + 3 * Ntang_ps - 1)] <-
-#         as.numeric(GetCoords(object@pseudo_tangents, "matrix"))
-#       pos <- pos + Ntang_ps * 3
-#       opt_min[pos:(pos + 3 * Ntang_ps - 1)] <-
-#         as.numeric(unlist(GetData(object@pseudo_tangents)))
-#       opt_max[pos:(pos + 3 * Ntang_ps - 1)] <-
-#         as.numeric(unlist(GetData(object@pseudo_tangents)))
-#     }
-#     pos <- Nstruct * 8 + 1 + Nps * 4 + 1
-#     xstart[pos:(pos + 3 * Ntang_ps - 1)] <-
-#       as.numeric(GetCoords(object@pseudo_tangents, "matrix"))
-#     xstart[pos:(pos + 3 * Ntang_ps - 1)] <-
-#       as.numeric(GetCoords(object@pseudo_tangents, "matrix"))
-#     pos <- pos + Ntang_ps * 3
-#     xstart[pos:(pos + 3 * Ntang_ps - 1)] <-
-#       as.numeric(unlist(GetData(object@pseudo_tangents)))
-#     xstart[pos:(pos + 3 * Ntang_ps - 1)] <-
-#       as.numeric(unlist(GetData(object@pseudo_tangents)))
-#
-#     # conforming starting point to limits
-#     xstart[xstart < opt_min] <- opt_min[xstart < opt_min]
-#     xstart[xstart > opt_max] <- opt_max[xstart > opt_max]
-#
-#     # fitness function
-#     makeGP <- function(x, finished = F){
-#       # covariance model
-#       m <- vector("list", Nstruct)
-#       for(i in 1:Nstruct){
-#         m[[i]] <- covarianceStructure3D(
-#           type = structures[i],
-#           contribution = x[(i-1)*8+1],
-#           maxrange = x[(i-1)*8+2],
-#           midrange = x[(i-1)*8+2] *
-#             x[(i-1)*8+3],
-#           minrange = x[(i-1)*8+2] *
-#             x[(i-1)*8+3] *
-#             x[(i-1)*8+4],
-#           azimuth = x[(i-1)*8+5],
-#           dip = x[(i-1)*8+6],
-#           rake = x[(i-1)*8+7],
-#           power = x[(i-1)*8+8]
-#         )
-#       }
-#       # pseudo-inputs
-#       ps <- matrix(
-#         x[(Nstruct * 8 + 2):(Nstruct * 8 + 1 + 3 * Nps)],
-#         Nps, 3)
-#       pos <- Nstruct * 8 + 1 + 3 * Nps + 1
-#       psnug <- x[pos:(pos + Nps - 1)]
-#       # pseudo_tangents
-#       if(Ntang_ps > 0){
-#         pos <- Nstruct * 8 + 1 + Nps * 4 + 1
-#         tang_coords <- matrix(x[pos:(pos + 3 * Ntang_ps - 1)], Ntang_ps, 3)
-#         pos <- pos + Ntang_ps * 3
-#         tang_df <- matrix(x[pos:(pos + 3 * Ntang_ps - 1)], Ntang_ps, 3)
-#         tang_df <- apply(tang_df, 2, function(rw){
-#           rw / sqrt(sum(rw ^ 2))
-#         })
-#         tang_df <- data.frame(tang_df)
-#         colnames(tang_df) <- c("dX", "dY", "dZ")
-#         ps_tang <- points3DDataFrame(tang_coords, tang_df)
-#       }
-#       else
-#         ps_tang <- NULL
-#
-#       # temporary GP
-#       if(nugget){
-#         # fit a constant nugget model
-#         tmpnug <- x[Nstruct * 8 + 1]
-#       }
-#       else{
-#         # use values as given
-#         tmpnug <- data_nugget
-#       }
-#       # points with fixed nugget
-#       tmpnug[nugget.fix] <- data_nugget[nugget.fix]
-#       # GP
-#       tmpgp <- SPGP(
-#         data = object@data,
-#         model = m,
-#         value = "value",
-#         nugget = tmpnug,
-#         mean = object@mean,
-#         trend = object@trend,
-#         tangents = object@tangents,
-#         pseudo_inputs = ps,
-#         nugget_ps = psnug,
-#         pseudo_tangents = ps_tang,
-#         reg.v = object@pre_comp$reg.v,
-#         reg.t = object@pre_comp$reg.t
-#       )
-#       # output
-#       if(finished)
-#         return(tmpgp)
-#       else
-#         return(tmpgp@likelihood)
-#     }
-#
-#     # optimization
-#     opt <- ga(
-#       type = "real-valued",
-#       fitness = function(x) makeGP(x, F),
-#       min = opt_min,
-#       max = opt_max,
-#       pmutation = 0.5,
-#       popSize = 20,
-#       run = 20,
-#       monitor = monitor,
-#       suggestions = xstart
-#     )
-#
-#     # update
-#     sol <- opt@solution
-#     return(makeGP(sol, T))
-#   }
-# )
-
 #### Simulate ####
 #' @rdname Simulate
 setMethod(
   f = "Simulate",
   signature = "SPGP",
   definition = function(object, target, Nsim, to = "value",
-                        discount.noise = F, smooth = T, verbose = T){
+                        discount.noise = F, smooth = T, verbose = T,
+                        randnum = NULL){
 
     # setup
-    B0 <- object@pre_comp$B
-    Bi0 <- solve(B0)
-    w0 <- B0 %*% as.matrix(object@pre_comp$w_value)
     ps <- object@pseudo_inputs
-    tot_var <- sum(sapply(object@model, function(m) m@contribution))
+    tot_var <- object@model@total.var
+    if (nrow(object@data) == 0){
+      B0 <- tcrossprod(object@pre_comp$LM)
+      Bi0 <- solve(B0)
+      w0 <- matrix(0, nrow(ps), 1)
+    }
+    else{
+      B0 <- object@pre_comp$B
+      Bi0 <- solve(B0)
+      w0 <- B0 %*% as.matrix(object@pre_comp$w_value)
+    }
+
+    # random numbers
+    if(is.null(randnum)){
+      randmat <- matrix(rnorm(Nsim * nrow(target)), nrow(target), Nsim)
+      pathmat <- matrix(0, nrow(target), Nsim)
+      for(i in seq(Nsim)) pathmat[, i] <- sample(nrow(target))
+    }
+
+    else{
+      randmat <- matrix(randnum, nrow(target), Nsim)
+      pathmat <- matrix(seq(nrow(target)), nrow(target), Nsim)
+    }
 
     # number formatting
     Ndigits <- length(unlist(strsplit(as.character(Nsim), NULL)))
     form <- paste0("%0", Ndigits, ".0f")
+
+    # trivial solution
+    if(object@model@total.var == 0){
+      sim <- matrix(object@mean, nrow(target), Nsim)
+      colnames(sim) <- paste0(to, ".sim_", sprintf(form, seq(Nsim)))
+      target[, colnames(sim)] <- data.frame(as.matrix(sim))
+      return(target)
+    }
 
     # covariances
     K_TM <- Matrix(CovarianceMatrix(target, ps, object@model))
@@ -964,6 +736,7 @@ setMethod(
     else{
       d_T <- tot_var - Q_T
     }
+
 
     # trend
     if(is.null(object@trend) | length(object@trend) == 0){
@@ -984,23 +757,30 @@ setMethod(
     # simulation
     for(i in seq(Nsim)){
       if(verbose) cat("\rSimulation", i, "of", Nsim, "...")
-      path <- sample(nrow(target))
-      target[paste0(to, ".sim_", sprintf(form, i))] <-
-        .sparse_sim(path = path,
-                    nugget = object@nugget,
-                    w_ = as.numeric(w0),
-                    Bi_ = as.matrix(Bi0),
-                    KMi_ = KMi,
-                    maxvar = tot_var,
-                    K_ = as.matrix(K_TM),
-                    d_ = as.numeric(d_T),
-                    yTR = as.numeric(yTR + object@mean),
-                    vTR = as.numeric(vTR),
-                    discount_noise = discount.noise,
-                    Q = Q_T,
-                    smooth = smooth)
+      # if(useGPU){
+      #   ysim <- .sparse_sim_gpu(path, object@nugget, w0, Bi0, KMi, tot_var, K_TM,
+      #                           d_T, yTR + object@mean, vTR, discount_noise,
+      #                           Q_T, smooth)
+      # }
+      # else{
+        ysim <- .sparse_sim(path = pathmat[, i],
+                            nugget = rep(object@model@nugget, nrow(target)),
+                            w_ = as.numeric(w0),
+                            Bi_ = as.matrix(Bi0),
+                            KMi_ = KMi,
+                            maxvar = rep(tot_var, nrow(target)),
+                            K_ = as.matrix(K_TM),
+                            d_ = as.numeric(d_T),
+                            yTR = as.numeric(yTR + object@mean),
+                            vTR = as.numeric(vTR),
+                            discount_noise = discount.noise,
+                            Q = Q_T,
+                            smooth = smooth,
+                            randnum = randmat[, i])
+      # }
+      target[paste0(to, ".sim_", sprintf(form, i))] <- ysim
     }
-    cat("\n")
+    if(verbose) cat("\n")
     return(target)
   }
 )
