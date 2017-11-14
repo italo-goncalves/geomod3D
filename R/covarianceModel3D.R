@@ -45,19 +45,12 @@ covarianceModel3D <- setClass(
 #' describing the desired covariance structure. A single object or multiple,
 #' concatenated objects.
 #'
-#' @name covarianceModel3D-init
+#' @name covarianceModel3D
 #'
 #' @seealso \code{\link{covarianceStructure3D-class}}
-setMethod(
-  f = "initialize",
-  signature = "covarianceModel3D",
-  definition = function(.Object, nugget, structures, nugget.dir = 0){
-    .Object@nugget <- nugget
-    .Object@nugget.dir <- nugget.dir
-    if (class(structures) != "list") structures <- list(structures)
-    .Object@structures <- structures
-    .Object@total.var <- sum(sapply(.Object@structures,
-                             function(s) s@contribution))
-    return(.Object)
-  }
-)
+covarianceModel3D <- function(nugget, structures, nugget.dir = 0){
+  if (class(structures) != "list") structures <- list(structures)
+  total.var <- sum(sapply(.Object@structures, function(s) s@contribution))
+  new("covarianceModel3D", nugget = nugget, nugget.dir = nugget.dir,
+      structures = structures, total.var = total.var)
+}

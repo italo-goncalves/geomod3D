@@ -4,8 +4,8 @@
 \alias{anisotropy3D}
 \title{Anisotropy ellipsoid}
 \usage{
-anisotropy3D(maxrange, midrange, minrange = midrange, azimuth = 0,
-  dip = 0, rake = 0, radians = F)
+anisotropy3D(maxrange, midrange = maxrange, minrange = midrange,
+  azimuth = 0, dip = 0, rake = 0, radians = F)
 }
 \arguments{
 \item{maxrange, midrange, minrange}{The  three semi-axes of the anisotropy

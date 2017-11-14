@@ -3,47 +3,62 @@
 \docType{methods}
 \name{CovarianceMatrix}
 \alias{CovarianceMatrix}
-\alias{CovarianceMatrix,lines3DDataFrame,lines3DDataFrame-method}
-\alias{CovarianceMatrix,lines3DDataFrame,points3DDataFrame-method}
-\alias{CovarianceMatrix,points3DDataFrame,lines3DDataFrame-method}
-\alias{CovarianceMatrix,points3DDataFrame,points3DDataFrame-method}
-\alias{CovarianceMatrix,points3DDataFrame,directions3DDataFrame-method}
-\alias{CovarianceMatrix,directions3DDataFrame,points3DDataFrame-method}
-\alias{CovarianceMatrix,directions3DDataFrame,directions3DDataFrame-method}
-\alias{CovarianceMatrix,points3DDataFrame,blocks3DDataFrame-method}
-\alias{CovarianceMatrix,blocks3DDataFrame,points3DDataFrame-method}
-\alias{CovarianceMatrix,blocks3DDataFrame,blocks3DDataFrame-method}
+\alias{CovarianceMatrix,lines3DDataFrame,lines3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,lines3DDataFrame,points3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,points3DDataFrame,lines3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,points3DDataFrame,points3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,points3DDataFrame,directions3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,directions3DDataFrame,points3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,directions3DDataFrame,directions3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,points3DDataFrame,blocks3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,blocks3DDataFrame,points3DDataFrame,covarianceModel3D-method}
+\alias{CovarianceMatrix,blocks3DDataFrame,blocks3DDataFrame,covarianceModel3D-method}
+\alias{NuggetMatrix,spatial3DDataFrame,covarianceModel3D-method}
 \title{Covariance matrix of spatial data and/or its derivatives.}
 \usage{
-CovarianceMatrix(x, y, ...)
+CovarianceMatrix(x, y, model, ...)
 
-\S4method{CovarianceMatrix}{lines3DDataFrame,lines3DDataFrame}(x, y = x,
-  model, parts = 10)
 
-\S4method{CovarianceMatrix}{lines3DDataFrame,points3DDataFrame}(x, y, model,
-  parts = 10)
+  \S4method{CovarianceMatrix}{lines3DDataFrame,lines3DDataFrame,covarianceModel3D}(x,
+  y = x, model, parts = 10)
 
-\S4method{CovarianceMatrix}{points3DDataFrame,lines3DDataFrame}(x, y, model,
-  parts = 10)
 
-\S4method{CovarianceMatrix}{points3DDataFrame,points3DDataFrame}(x, y = x,
-  model)
+  \S4method{CovarianceMatrix}{lines3DDataFrame,points3DDataFrame,covarianceModel3D}(x,
+  y, model, parts = 10)
 
-\S4method{CovarianceMatrix}{points3DDataFrame,directions3DDataFrame}(x, y,
-  model)
 
-\S4method{CovarianceMatrix}{directions3DDataFrame,points3DDataFrame}(x, y,
-  model)
+  \S4method{CovarianceMatrix}{points3DDataFrame,lines3DDataFrame,covarianceModel3D}(x,
+  y, model, parts = 10)
 
-\S4method{CovarianceMatrix}{directions3DDataFrame,directions3DDataFrame}(x,
+
+  \S4method{CovarianceMatrix}{points3DDataFrame,points3DDataFrame,covarianceModel3D}(x,
   y = x, model)
 
-\S4method{CovarianceMatrix}{points3DDataFrame,blocks3DDataFrame}(x, y, model)
 
-\S4method{CovarianceMatrix}{blocks3DDataFrame,points3DDataFrame}(x, y, model)
+  \S4method{CovarianceMatrix}{points3DDataFrame,directions3DDataFrame,covarianceModel3D}(x,
+  y, model)
 
-\S4method{CovarianceMatrix}{blocks3DDataFrame,blocks3DDataFrame}(x, y = x,
-  model)
+
+  \S4method{CovarianceMatrix}{directions3DDataFrame,points3DDataFrame,covarianceModel3D}(x,
+  y, model)
+
+
+  \S4method{CovarianceMatrix}{directions3DDataFrame,directions3DDataFrame,covarianceModel3D}(x,
+  y = x, model)
+
+
+  \S4method{CovarianceMatrix}{points3DDataFrame,blocks3DDataFrame,covarianceModel3D}(x,
+  y, model)
+
+
+  \S4method{CovarianceMatrix}{blocks3DDataFrame,points3DDataFrame,covarianceModel3D}(x,
+  y, model)
+
+
+  \S4method{CovarianceMatrix}{blocks3DDataFrame,blocks3DDataFrame,covarianceModel3D}(x,
+  y = x, model)
+
+\S4method{NuggetMatrix}{spatial3DDataFrame,covarianceModel3D}(x, model)
 }
 \arguments{
 \item{x, y}{3D spatial objects.}

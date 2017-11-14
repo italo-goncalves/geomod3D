@@ -13,7 +13,7 @@ Simulate(object, ...)
   discount.noise = F)
 
 \S4method{Simulate}{SPGP}(object, target, Nsim, to = "value",
-  discount.noise = F, smooth = T, verbose = T)
+  discount.noise = F, smooth = T, verbose = T, randnum = NULL)
 }
 \arguments{
 \item{object}{A \code{GP} object.}
