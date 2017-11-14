@@ -83,7 +83,7 @@ points3DDataFrame <- function(coords, df){
 #### [ ####
 setMethod(
   f = "[",
-  signature = "spatial3DDataFrame",
+  signature = "points3DDataFrame",
   definition = function(x,i,j,drop){
     if (missing(i)) i <- seq(nrow(x))
     if (class(i) == "character"){
@@ -94,7 +94,7 @@ setMethod(
     df <- GetData(x)
     coords_sub <- coords_list[i]
     df_sub <- df[i,j,drop=FALSE]
-    return(new(class(x), coords = coords_sub, data = df_sub))
+    return(points3DDataFrame(coords_sub, df_sub))
   }
 )
 

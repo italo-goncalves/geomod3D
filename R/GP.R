@@ -131,6 +131,7 @@ GP <- function(data, model, value,
   # trend
   if(is.null(trend) | length(trend) == 0){
     TR <- matrix(0, nrow(data), 0)
+    trend <- character(0)
   }else{
     TR <- TrendMatrix(data, trend)
     if(!is.null(tangents) && nrow(tangents) > 0){
@@ -179,7 +180,7 @@ GP <- function(data, model, value,
 
   pre_comp$w_value <- as.numeric(w_value)
   pre_comp$w_var <- L
-  beta <- NULL
+  beta <- matrix(0, 0, 0)
   if(Ntrend > 0){
     HLi <- t(TR) %*% solve(L)
     A <- HLi %*% t(HLi)
@@ -554,7 +555,7 @@ setMethod(
       if(nugget.t)
         tmpnug.t <- x[Nstruct * 8 + 2]
       else
-        tmpnug.t <- object@model@nugget.t
+        tmpnug.t <- object@model@nugget.dir
 
       # GP
       tmpgp <- GP(

@@ -24,11 +24,11 @@ covarianceModel3D <- setClass(
             structures = "list",
             total.var = "numeric"),
   validity = function(object){
-    if (length(nugget) != 1)
+    if (length(object@nugget) != 1)
       stop("nugget must be a scalar")
-    if (length(nugget.dir) != 1)
+    if (length(object@nugget.dir) != 1)
       stop("nugget.dir must be a scalar")
-    if (!all(rapply(structures, class) == "covarianceStructure3D")){
+    if (!all(rapply(object@structures, class) == "covarianceStructure3D")){
       stop("all structures must be of class 'covarianceStructure3D'")
     }
   }
@@ -50,7 +50,7 @@ covarianceModel3D <- setClass(
 #' @seealso \code{\link{covarianceStructure3D-class}}
 covarianceModel3D <- function(nugget, structures, nugget.dir = 0){
   if (class(structures) != "list") structures <- list(structures)
-  total.var <- sum(sapply(.Object@structures, function(s) s@contribution))
+  total.var <- sum(sapply(structures, function(s) s@contribution))
   new("covarianceModel3D", nugget = nugget, nugget.dir = nugget.dir,
       structures = structures, total.var = total.var)
 }
