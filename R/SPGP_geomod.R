@@ -10,7 +10,7 @@ NULL
 #' @slot params A \code{list} containing modeling parameters such as the noise
 #' variance and regularization factors.
 #'
-#' @seealso \code{\link{SPGP_geomod-init}}
+#' @seealso \code{\link{SPGP_geomod}}
 #'
 #' @export SPGP_geomod
 SPGP_geomod <- setClass(
@@ -70,7 +70,7 @@ SPGP_geomod <- setClass(
 #' @seealso \code{\link{SPGP}}, \code{\link{SPGP-init}}, \code{\link{Predict}},
 #' \code{\link{Make3DArray}}
 #'
-#' @name SPGP_geomod-init
+#' @name SPGP_geomod
 #'
 #' @references [1] Gonçalves ÍG, Kumaira S, Guadagnin F.
 #' A machine learning approach to the potential-field method for implicit

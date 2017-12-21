@@ -62,7 +62,7 @@ edges of the object's bounding box.}
 }}
 
 \seealso{
-\code{\link{lines3DDataFrame-init}},
+\code{\link{lines3DDataFrame}},
 \code{\link{spatial3DDataFrame-class}}
 
 \code{\link{spatial3DDataFrame-class}},

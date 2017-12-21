@@ -15,7 +15,7 @@ NULL
 #' @details The \code{"HOLEID"} column is used by this object's methods. Do not
 #' remove or rename it.
 #'
-#' @seealso \code{\link{lines3DDataFrame-init}},
+#' @seealso \code{\link{lines3DDataFrame}},
 #' \code{\link{spatial3DDataFrame-class}}
 #'
 #' @export lines3DDataFrame
@@ -96,6 +96,7 @@ lines3DDataFrame <- function(lines_list = NULL, df = NULL,
         stop("Survey data not supported yet")
       }
       df <- df[, c(collar_names, assay_names)]
+      colnames(df)[colnames(df) == holeid] <- "HOLEID"
     }
 
     ## building directly from list and data.frame
@@ -155,6 +156,24 @@ setMethod(
   }
 )
 
+
+#### [ ####
+setMethod(
+  f = "[",
+  signature = "lines3DDataFrame",
+  definition = function(x,i,j,drop){
+    if (missing(i)) i <- seq(nrow(x))
+    if (class(i) == "character"){
+      j <- i
+      i <- seq(nrow(x))
+    }
+    coords_list <- GetCoords(x)
+    df <- GetData(x)
+    coords_sub <- coords_list[i]
+    df_sub <- df[i,j,drop=FALSE]
+    return(lines3DDataFrame(coords_sub, df_sub))
+  }
+)
 
 #### show ####
 setMethod(
@@ -306,7 +325,10 @@ setMethod(
     if (any(keep %in% c("HOLEID", by))){
       keep <- keep[-which(keep %in% c("HOLEID", by))]
     }
-    df <- df[,c("HOLEID", by, keep)]
+    if (length(keep) == 0)
+      df <- df[,c("HOLEID", by)]
+    else
+      df <- df[,c("HOLEID", by, keep)]
     Nlines <- nrow(line_coords)
     directions <- (line_coords[, 1:3] - line_coords[, 4:6]) / line_lengths
 

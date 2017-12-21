@@ -5,10 +5,10 @@
 \alias{GP_geomod}
 \title{Gaussian Process for Implicit Geological Modeling}
 \usage{
-GP_geomod(data, value1, value2 = value1, model, nugget, tangents = NULL,
+GP_geomod(data, value1, value2 = value1, model, tangents = NULL,
   enforce.contacts = T, reg.v = 1e-09, reg.t = 1e-09)
 
-GP_geomod(data, value1, value2 = value1, model, nugget, tangents = NULL,
+GP_geomod(data, value1, value2 = value1, model, tangents = NULL,
   enforce.contacts = T, reg.v = 1e-09, reg.t = 1e-09)
 }
 \arguments{
@@ -22,8 +22,6 @@ geological classes.}
 \item{model}{The covariance model. A \code{covarianceStructure3D} or a
 \code{list} containing one or more such objects.}
 
-\item{nugget}{The model's nugget effect or noise variance.}
-
 \item{tangents}{A \code{points3DDataFrame} object containing structural
 geology data. Most likely generated with the \code{GetLineDirections()}
 method.}
@@ -35,6 +33,8 @@ with length matching the number of data points.}
 
 \item{reg.t}{Regularization for structural data. A single value or a vector
 with length matching the number of structural data.}
+
+\item{nugget}{The model's nugget effect or noise variance.}
 }
 \description{
 Implicit geological using Gaussian Processes and compositional relations
@@ -69,8 +69,8 @@ at the value 0.
 \describe{
 \item{\code{GPs}}{A \code{list} containing one \code{GP} object per class.}
 
-\item{\code{params}}{A \code{list} containing modeling parameters such as the noise
-variance and regularization factors.}
+\item{\code{params}}{A \code{list} containing modeling parameters such as
+regularization factors.}
 }}
 
 \references{
