@@ -23,5 +23,5 @@ TODO list:
 * Add data and examples of modeling with continuous variables
 * Speed up the `GP` class predictions
 * Add infrastructure for multivariate modeling
-* Move the nugget effect from the `GP` objects to the covariance model objects
 * Implement GPU computations
+* Implement package testing

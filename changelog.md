@@ -19,6 +19,7 @@ value inflation
 nugget effect on the same object
 * `points3DDataFrame` can now be initialized with no arguments
 * Corrected the computations of the log-likelihood
+* `GP_geomod` can now handle missing data labels
 
 ## Version 0.0.0.9001
 

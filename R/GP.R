@@ -316,7 +316,7 @@ setMethod(
       if(length(object@trend) > 0){
         pred_var <- colSums(LinvK ^ 2)
         pred_var[pred_var > tot_var] <- tot_var
-        pred_var <- tot_var - pred_var + object@nugget
+        pred_var <- tot_var - pred_var + object@model@nugget
         tr_var <- colSums(
           R * (solve(w_tr %*% t(w_tr), R))
         )
@@ -325,7 +325,7 @@ setMethod(
       else{
         pred_var <- colSums(solve(w_var, t(Ktarget)) ^ 2)
         pred_var[pred_var > tot_var] <- tot_var
-        pred_var <- tot_var - pred_var + object@nugget
+        pred_var <- tot_var - pred_var + object@model@nugget
       }
       target[, paste0(to, ".var")] <- pred_var
     }

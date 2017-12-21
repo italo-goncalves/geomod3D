@@ -10,10 +10,10 @@ NULL
 #' among the geological classes.
 #'
 #' @slot GPs A \code{list} containing one \code{GP} object per class.
-#' @slot params A \code{list} containing modeling parameters such as the noise
-#' variance and regularization factors.
+#' @slot params A \code{list} containing modeling parameters such as
+#' regularization factors.
 #'
-#' @seealso \code{\link{GP_geomod-init}}
+#' @seealso \code{\link{GP_geomod}}
 #'
 #' @export GP_geomod
 GP_geomod <- setClass(
@@ -67,59 +67,54 @@ GP_geomod <- setClass(
 #' @seealso \code{\link{GP}}, \code{\link{GP-init}}, \code{\link{Predict}},
 #' \code{\link{Make3DArray}}
 #'
-#' @name GP_geomod-init
+#' @name GP_geomod
 #'
 #' @references [1] Gonçalves IG, Kumaira S, Guadagnin F.
 #' A machine learning approach to the potential-field method for implicit
 #' modeling of geological structures. Comput Geosci 2017;103:173–82.
 #' doi:10.1016/j.cageo.2017.03.015.
-setMethod(
-  f = "initialize",
-  signature = "GP_geomod",
-  definition = function(.Object, data, value1, value2 = value1,
-                        model, nugget, tangents = NULL,
-                        enforce.contacts = T,
-                        reg.v = 1e-9, reg.t = 1e-9){
-    # setup
-    Ndata <- nrow(data)
-    xdata <- GetData(data)
-    categories <- sort(unique(c(xdata[, value1], xdata[, value2])))
-    ncat <- length(categories)
-    GPs <- vector("list", ncat)
+GP_geomod <- function(data, value1, value2 = value1,
+                      model, tangents = NULL,
+                      enforce.contacts = T,
+                      reg.v = 1e-9, reg.t = 1e-9){
+  # setup
+  Ndata <- nrow(data)
+  xdata <- GetData(data)
+  categories <- c(xdata[, value1], xdata[, value2])
+  categories[!is.na(categories)]
+  categories <- sort(unique(categories))
+  ncat <- length(categories)
+  GPs <- vector("list", ncat)
 
-    # model building
-    for (i in seq_along(categories)){
+  # model building
+  for (i in seq_along(categories)){
 
-      # indicators, or potential components
-      ind <- matrix(- 1 / ncat, nrow(data), 2) # negative
-      ind[xdata[, value1] == categories[i], 1] <- 1 # positive 1
-      ind[xdata[, value2] == categories[i], 2] <- 1 # positive 2
-      ind <- rowMeans(ind) # contacts get (1 - 1 / ncat) / 2
+    # indicators, or potential components
+    ind <- matrix(- 1 / ncat, nrow(data), 2) # negative
+    ind[xdata[, value1] == categories[i], 1] <- 1 # positive 1
+    ind[xdata[, value2] == categories[i], 2] <- 1 # positive 2
+    ind <- rowMeans(ind) # contacts get (1 - 1 / ncat) / 2
 
-      # contact indices
-      cont <- ind == (1 - 1 / ncat) / 2
-      if (!enforce.contacts) cont <- numeric()
+    # contact indices
+    cont <- ind == (1 - 1 / ncat) / 2
+    if (!enforce.contacts) cont <- numeric()
 
-      # GPs
-      GPs[[i]] <- GP(data, model,
-                     ind, nugget,
-                     mean = - 1 / ncat,
-                     tangents = tangents,
-                     reg.t = reg.t,
-                     reg.v = reg.v,
-                     force.interp = cont)
-    }
-    names(GPs) <- make.names(categories)
-    .Object@GPs <- GPs
-
-    # output
-    .Object@params$nugget <- nugget
-    .Object@params$reg.v <- reg.v
-    .Object@params$reg.t <- reg.t
-
-    return(.Object)
+    # GPs
+    GPs[[i]] <- GP(data, model,
+                   ind,
+                   mean = - 1 / ncat,
+                   tangents = tangents,
+                   reg.t = reg.t,
+                   reg.v = reg.v,
+                   force.interp = cont)
   }
-)
+  names(GPs) <- make.names(categories)
+
+  # output
+  new("GP_geomod", GPs = GPs,
+      params = list(reg.v = reg.v, reg.t = reg.t))
+}
+
 
 #### show ####
 setMethod(
@@ -193,7 +188,7 @@ setMethod(
       indmat[, i] <- tmp[["value"]]
       varstr <- ifelse(class(object@GPs[[i]]) == "SPGP",
                        "value.var_full", "value.var")
-      varmat[, i] <- tmp[[varstr]] - object@GPs[[i]]@nugget
+      varmat[, i] <- tmp[[varstr]] - object@GPs[[i]]@model@nugget
     }
 
     # probabilities
