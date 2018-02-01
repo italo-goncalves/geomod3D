@@ -18,6 +18,8 @@
 #' \code{\link{spatial3DDataFrame-class}},
 #' \code{\link{points3DDataFrame-init}}
 #'
+#' @name directions3DDataFrame-class
+#' @title directions3DDataFrame-class
 #' @export directions3DDataFrame
 directions3DDataFrame <- setClass(
   "directions3DDataFrame",
@@ -41,7 +43,7 @@ directions3DDataFrame <- setClass(
 #' @seealso \code{\link{directions3DDataFrame-class}},
 #' \code{\link{points3DDataFrame-class}}
 #'
-#' @name directions3DDataFrame
+#' @name directions3DDataFrame-init
 directions3DDataFrame <- function(coords, df, directions){
 
     # coordinates

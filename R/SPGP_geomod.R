@@ -10,8 +10,9 @@ NULL
 #' @slot params A \code{list} containing modeling parameters such as the noise
 #' variance and regularization factors.
 #'
-#' @seealso \code{\link{SPGP_geomod}}
+#' @seealso \code{\link{SPGP_geomod-init}}, \code{\link{GP_geomod-class}}
 #'
+#' @name SPGP_geomod-class
 #' @export SPGP_geomod
 SPGP_geomod <- setClass(
   "SPGP_geomod",
@@ -70,9 +71,9 @@ SPGP_geomod <- setClass(
 #' @seealso \code{\link{SPGP}}, \code{\link{SPGP-init}}, \code{\link{Predict}},
 #' \code{\link{Make3DArray}}
 #'
-#' @name SPGP_geomod
+#' @name SPGP_geomod-init
 #'
-#' @references [1] Gonçalves ÍG, Kumaira S, Guadagnin F.
+#' @references Gonçalves ÍG, Kumaira S, Guadagnin F.
 #' A machine learning approach to the potential-field method for implicit
 #' modeling of geological structures. Comput Geosci 2017;103:173–82.
 #' doi:10.1016/j.cageo.2017.03.015.
@@ -171,27 +172,192 @@ setMethod(
 
 #### Fit ####
 #' @rdname Fit
+# setMethod(
+#   f = "Fit",
+#   signature = "SPGP_geomod",
+#   definition = function(object, contribution = T, nugget = T, maxrange = T,
+#                         midrange = F, minrange = F, azimuth = F, dip = F,
+#                         rake = F, power = F, pseudo_inputs = F,
+#                         pseudo_tangents = F, ...){
+#     lab <- names(object@GPs)
+#     for(i in seq_along(object@GPs)){
+#       cat("Fitting class", lab[i], "\n\n\n")
+#       object@GPs[[i]] <- Fit(object@GPs[[i]], contribution = contribution,
+#                              nugget = nugget, maxrange = maxrange,
+#                              midrange = midrange, minrange = minrange,
+#                              azimuth = azimuth, dip = dip, rake = rake,
+#                              power = power,
+#                              pseudo_inputs = pseudo_inputs,
+#                              pseudo_tangents = pseudo_tangents,
+#                              ...)
+#     }
+#
+#     return(object)
+#
+#   }
+# )
 setMethod(
   f = "Fit",
   signature = "SPGP_geomod",
-  definition = function(object, contribution = T, nugget = T, maxrange = T,
-                        midrange = F, minrange = F, azimuth = F, dip = F,
-                        rake = F, power = F, pseudo_inputs = F,
-                        pseudo_tangents = F, ...){
-    lab <- names(object@GPs)
-    for(i in seq_along(object@GPs)){
-      cat("Fitting class", lab[i], "\n\n\n")
-      object@GPs[[i]] <- Fit(object@GPs[[i]], contribution = contribution,
-                             nugget = nugget, maxrange = maxrange,
-                             midrange = midrange, minrange = minrange,
-                             azimuth = azimuth, dip = dip, rake = rake,
-                             power = power,
-                             pseudo_inputs = pseudo_inputs,
-                             pseudo_tangents = pseudo_tangents,
-                             ...)
+  definition = function(object, maxrange = T, midrange = F, minrange = F,
+                        azimuth = F, dip = F, rake = F, nugget = F,
+                        power = F, ...){
+
+    # setup
+    structures <- sapply(object@GPs[[1]]@model@structures, function(x) x@type)
+    Nstruct <- length(structures)
+    Ndata <- nrow(object@GPs[[1]]@data)
+    data_box <- BoundingBox(object@GPs[[1]]@data)
+    data_rbase <- sqrt(sum(data_box[1, ] - data_box[2, ])^2)
+    GPs <- length(object@GPs)
+
+    # optimization limits and starting point
+    opt_min <- opt_max <- numeric(Nstruct * 8 + 1)
+    xstart <- matrix(0, 1, Nstruct * 8 + 1)
+    for (i in 1:Nstruct){
+      # contribution
+      opt_min[(i - 1) * 8 + 1] <- 0.1
+      opt_max[(i - 1) * 8 + 1] <- 5
+      xstart[(i - 1) * 8 + 1] <- object@GPs[[1]]@model@structures[[i]]@contribution
+
+      # maxrange
+      if (maxrange){
+        opt_min[(i - 1) * 8 + 2] <- data_rbase / 1000
+        opt_max[(i - 1) * 8 + 2] <- data_rbase * 5
+      }
+      else {
+        opt_min[(i - 1) * 8 + 2] <- object@GPs[[1]]@model@structures[[i]]@maxrange
+        opt_max[(i - 1) * 8 + 2] <- object@GPs[[1]]@model@structures[[i]]@maxrange
+      }
+      xstart[(i - 1) * 8 + 2] <- object@GPs[[1]]@model@structures[[i]]@maxrange
+
+      # midrange (multiple of maxrange)
+      if (midrange)
+        opt_min[(i - 1) * 8 + 3] <- 0.01
+      else
+        opt_min[(i - 1) * 8 + 3] <- 1
+      opt_max[(i - 1) * 8 + 3] <- 1
+      xstart[(i - 1) * 8 + 3] <- object@GPs[[1]]@model@structures[[i]]@midrange /
+        object@GPs[[1]]@model@structures[[i]]@maxrange
+
+      # minrange(multiple of midrange)
+      if (minrange)
+        opt_min[(i - 1) * 8 + 4] <- 0.01
+      else
+        opt_min[(i - 1) * 8 + 4] <- 1
+      opt_max[(i - 1) * 8 + 4] <- 1
+      xstart[(i - 1) * 8 + 4] <- object@GPs[[1]]@model@structures[[i]]@minrange /
+        object@GPs[[1]]@model@structures[[i]]@midrange
+
+      # azimuth
+      opt_min[(i - 1) * 8 + 5] <- 0
+      if (azimuth)
+        opt_max[(i - 1) * 8 + 5] <- 360
+      else
+        opt_max[(i - 1) * 8 + 5] <- 0
+      xstart[(i - 1) * 8 + 5] <- object@GPs[[1]]@model@structures[[i]]@azimuth
+
+      # dip
+      opt_min[(i - 1) * 8 + 6] <- 0
+      if (dip)
+        opt_max[(i - 1) * 8 + 6] <- 90
+      else
+        opt_max[(i - 1) * 8 + 6] <- 0
+      xstart[(i - 1) * 8 + 6] <- object@GPs[[1]]@model@structures[[i]]@dip
+
+      # rake
+      opt_min[(i - 1) * 8 + 7] <- 0
+      if (rake)
+        opt_max[(i - 1) * 8 + 7] <- 90
+      else
+        opt_max[(i - 1) * 8 + 7] <- 0
+      xstart[(i - 1) * 8 + 7] <- object@GPs[[1]]@model@structures[[i]]@rake
+
+      # power
+      if (power){
+        opt_min[(i - 1) * 8 + 8] <- 0.1
+        opt_max[(i - 1) * 8 + 8] <- 3
+      }
+      else{
+        opt_min[(i - 1) * 8 + 8] <- 1
+        opt_max[(i - 1) * 8 + 8] <- 1
+      }
+      xstart[(i - 1) * 8 + 8] <- object@GPs[[1]]@model@structures[[i]]@power
     }
 
-    return(object)
+    # nugget
+    if (nugget){
+      opt_min[Nstruct * 8 + 1] <- 1e-6
+      opt_max[Nstruct * 8 + 1] <- 2
+      xstart[Nstruct * 8 + 1] <- 0.1 #mean(data_nugget)
+    }
+    else{
+      opt_min[Nstruct * 8 + 1] <- object@GPs[[1]]@model@nugget
+      opt_max[Nstruct * 8 + 1] <- object@GPs[[1]]@model@nugget
+      xstart[Nstruct * 8 + 1] <- object@GPs[[1]]@model@nugget
+    }
 
+    # conforming starting point to limits
+    xstart[xstart < opt_min] <- opt_min[xstart < opt_min]
+    xstart[xstart > opt_max] <- opt_max[xstart > opt_max]
+
+    # fitness function
+    makeGP <- function(x, finished = F){
+      # covariance model
+      m <- vector("list", Nstruct)
+      for (i in 1:Nstruct){
+        m[[i]] <- covarianceStructure3D(
+          type = structures[i],
+          contribution = x[( i - 1) * 8 + 1],
+          maxrange = x[(i - 1) * 8 + 2],
+          midrange = x[(i - 1) * 8 + 2] * x[(i - 1) * 8 + 3],
+          minrange = x[(i - 1) * 8 + 2] * x[(i - 1) * 8 + 3] *
+            x[(i - 1) * 8 + 4],
+          azimuth = x[(i - 1) * 8 + 5],
+          dip = x[(i - 1) * 8 + 6],
+          rake = x[(i - 1) * 8 + 7],
+          power = x[(i - 1) * 8 + 8]
+        )
+      }
+      model <- covarianceModel3D(x[Nstruct * 8 + 1], m)
+
+      # GPs
+      tmpgp <- object
+      for(i in 1:GPs){
+        tmpgp@GPs[[i]] <- SPGP(
+          data = tmpgp@GPs[[i]]@data,
+          model = model,
+          value = "value",
+          mean = tmpgp@GPs[[i]]@mean,
+          trend = tmpgp@GPs[[i]]@trend,
+          tangents = tmpgp@GPs[[i]]@tangents,
+          force.interp = tmpgp@GPs[[i]]@data[["interpolate"]],
+          pseudo_inputs = object@GPs[[i]]@pseudo_inputs,
+          pseudo_tangents = object@GPs[[i]]@pseudo_tangents,
+          reg.v = object@GPs[[i]]@pre_comp$reg.v,
+          reg.t = object@GPs[[i]]@pre_comp$reg.t,
+          variational = object@GPs[[i]]@variational
+        )
+      }
+      # output
+      tmpgp@params$nugget <- x[Nstruct * 8 + 1]
+      if(finished)
+        return(tmpgp)
+      else
+        return(logLik(tmpgp))
+    }
+
+    # optimization
+    opt <- ga(
+      type = "real-valued",
+      fitness = function(x) makeGP(x, F),
+      min = opt_min,
+      max = opt_max,
+      suggestions = xstart, ...
+    )
+
+    # update
+    sol <- opt@solution
+    return(makeGP(sol, T))
   }
 )

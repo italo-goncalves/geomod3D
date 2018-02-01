@@ -20,6 +20,10 @@ nugget effect on the same object
 * `points3DDataFrame` can now be initialized with no arguments
 * Corrected the computations of the log-likelihood
 * `GP_geomod` can now handle missing data labels
+* `SPGP` method `Predict` now outputs a value that measures the quality of the
+sparse approximation
+* `GP_geomod` now uses the same covariance model for all classes
+* Improved documentation
 
 ## Version 0.0.0.9001
 

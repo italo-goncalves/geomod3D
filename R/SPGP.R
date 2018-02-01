@@ -4,8 +4,8 @@ NULL
 #### Sparse Pseudo-input Gaussian Process class ####
 #' Sparse Gaussian Process
 #'
-#' A sparse model for working with low computational cost. Extends the
-#' \code{GP} class.
+#' Implementation of the Sparse Gaussian Process model for 3D spatial
+#' interpolation. Extends the \code{GP} class.
 #'
 #' @slot data A \code{spatial3DDataFrame} object containing the necessary data.
 #' @slot tangents A \code{directions3DDataFrame} object containing structural
@@ -25,8 +25,9 @@ NULL
 #' @slot variational A logical indicating if the model uses the variational
 #' approach.
 #'
-#' @references Snelson, E., Ghahramani, Z., 2006. Sparse Gaussian Processes
-#' using Pseudo-inputs. Adv. Neural Inf. Process. Syst. 18 1257–1264.
+#' @references
+#' Snelson, E., Ghahramani, Z., 2006. Sparse Gaussian Processes using
+#' Pseudo-inputs. Adv. Neural Inf. Process. Syst. 18 1257–1264.
 #'
 #' Titsias, M., 2009. Variational Learning of Inducing Variables in Sparse
 #' Gaussian Processes. Aistats 5, 567–574.
@@ -35,8 +36,8 @@ NULL
 #' Probabilistic Sparse Gaussian Process Approximations. Adv. Neural Inf.
 #' Process. Syst. 29.
 #'
-#' @seealso \code{\link{SPGP-init}}
-#'
+#' @seealso \code{\link{SPGP-init}}, \code{\link{GP-class}}
+#' @name SPGP-class
 #' @export SPGP
 SPGP <- setClass(
   "SPGP",
@@ -51,7 +52,7 @@ SPGP <- setClass(
 #' Sparse Gaussian Process
 #'
 #' Implementation of the Sparse Gaussian Process model for 3D spatial
-#' interpolation.
+#' interpolation. Extends the \code{GP} class.
 #'
 #' @param data A \code{spatial3DDataFrame} object containing the data one
 #' wishes to model.
@@ -99,7 +100,7 @@ SPGP <- setClass(
 #' less prone to overfitting. \code{variational = F} corresponds to the
 #' Fully Independent Conditional (FIC) approach.
 #'
-#' @name SPGP
+#' @name SPGP-init
 #'
 #' @seealso \code{\link{SPGP-class}}, \code{\link{GP-class}}
 #'
@@ -125,7 +126,7 @@ SPGP <- function(data, model, value,
     tangents <- as(tangents, "directions3DDataFrame")
   if (is.null(pseudo_tangents))
     pseudo_tangents <- as(pseudo_tangents, "directions3DDataFrame")
-  if (is.null(trend)){
+  if (is.null(trend) || (is.character(trend) & length(trend) == 0)){
     trend <- as.character(trend)
     beta <- matrix(0, 0, 0)
   }
@@ -369,6 +370,7 @@ setMethod(
       if(output.var){
         target[paste0(to, ".var_full")] <- 0
         target[paste0(to, ".var_cor")] <- 0
+        target[paste0(to, ".quality")] <- 0
       }
       return(target)
     }
@@ -395,6 +397,7 @@ setMethod(
       if(output.var){
         target[paste0(to, ".var_full")] <- tot_var
         target[paste0(to, ".var_cor")] <- Q_T
+        target[paste0(to, ".quality")] <- Q_T / (tot_var - object@model@nugget)
       }
       return(target)
     }
@@ -432,6 +435,9 @@ setMethod(
       # correlated variance
       var_cor <- Q_T - var_reduction + var_trend
       target[paste0(to, ".var_cor")] <- var_cor
+
+      # sparse approximation quality
+      target[paste0(to, ".quality")] <- var_cor / (var_full - object@model@nugget)
     }
 
     # output
@@ -757,12 +763,24 @@ setMethod(
     # simulation
     for(i in seq(Nsim)){
       if(verbose) cat("\rSimulation", i, "of", Nsim, "...")
-      # if(useGPU){
-      #   ysim <- .sparse_sim_gpu(path, object@nugget, w0, Bi0, KMi, tot_var, K_TM,
-      #                           d_T, yTR + object@mean, vTR, discount_noise,
-      #                           Q_T, smooth)
-      # }
-      # else{
+      useGPU = F
+      if(useGPU){
+        ysim <- .sparse_sim_gpu(path = pathmat[, i],
+                                nugget = rep(object@model@nugget, nrow(target)),
+                                w = as.numeric(w0),
+                                Bi = as.matrix(Bi0),
+                                KMi = KMi,
+                                maxvar = rep(tot_var, nrow(target)),
+                                K_TM = as.matrix(K_TM),
+                                d_T = as.numeric(d_T),
+                                yTR = as.numeric(yTR + object@mean),
+                                vTR = as.numeric(vTR),
+                                discount_noise = discount.noise,
+                                Q_T = Q_T,
+                                smooth = smooth,
+                                randnum = randmat[, i])
+      }
+      else{
         ysim <- .sparse_sim(path = pathmat[, i],
                             nugget = rep(object@model@nugget, nrow(target)),
                             w_ = as.numeric(w0),
@@ -777,7 +795,7 @@ setMethod(
                             Q = Q_T,
                             smooth = smooth,
                             randnum = randmat[, i])
-      # }
+      }
       target[paste0(to, ".sim_", sprintf(form, i))] <- ysim
     }
     if(verbose) cat("\n")

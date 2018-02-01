@@ -37,8 +37,7 @@ A 3D spatial object of the same class as \code{target}
 containing the simulations.
 }
 \description{
-Generates a number of equally possible realizations of the modeled random
-field.
+Generates a number of realizations of the modeled random field.
 }
 \details{
 Standard GP objects use the Cholesky method, which limits the number

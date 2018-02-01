@@ -15,9 +15,10 @@ NULL
 #' @details The \code{"HOLEID"} column is used by this object's methods. Do not
 #' remove or rename it.
 #'
-#' @seealso \code{\link{lines3DDataFrame}},
+#' @seealso \code{\link{lines3DDataFrame-init}},
 #' \code{\link{spatial3DDataFrame-class}}
 #'
+#' @name lines3DDataFrame-class
 #' @export lines3DDataFrame
 lines3DDataFrame <- setClass(
   "lines3DDataFrame",
@@ -66,7 +67,7 @@ lines3DDataFrame <- setClass(
 #' @seealso \code{\link{spatial3DDataFrame-class}},
 #' \code{\link{lines3DDataFrame-class}}
 #'
-#' @name lines3DDataFrame
+#' @name lines3DDataFrame-init
 lines3DDataFrame <- function(lines_list = NULL, df = NULL,
                         collar = NULL, assay = NULL, survey = NULL,
                         holeid = "HOLEID", from = "FROM", to = "TO",

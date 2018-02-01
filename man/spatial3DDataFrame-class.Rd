@@ -6,7 +6,8 @@
 \alias{spatial3DDataFrame}
 \title{Abstract class for 3D spatial objects}
 \description{
-Abstract class for 3D spatial objects
+This class is used to define general methods, and is contained by all of
+the package's 3D objects.
 }
 \details{
 This class does not have a constructor method. It is used only to
@@ -32,6 +33,6 @@ edges of the object's bounding box.}
 }}
 
 \seealso{
-\code{\link{lines3DDataFrame-init}},
-\code{\link{points3DDataFrame-init}}
+\code{\link{lines3DDataFrame-class}},
+\code{\link{points3DDataFrame-class}}
 }

@@ -1,7 +1,7 @@
 #' @include spatial3DDataFrame.R
 
 #### points3DDataFrame class ####
-#' 3D point cloud with attributes
+#' A 3D point cloud with attributes
 #'
 #' A 3D point cloud. Extends the \code{spatial3DdataFrame} class.
 #'
@@ -13,6 +13,8 @@
 #' @seealso \code{\link{spatial3DDataFrame-class}},
 #' \code{\link{points3DDataFrame-init}}
 #'
+#' @name points3DDataFrame-class
+#' @title points3DDataFrame-class
 #' @export points3DDataFrame
 points3DDataFrame <- setClass(
   "points3DDataFrame",
@@ -40,7 +42,7 @@ points3DDataFrame <- setClass(
 #' @seealso \code{\link{spatial3DDataFrame-class}},
 #' \code{\link{points3DDataFrame-class}}
 #'
-#' @name points3DDataFrame
+#' @name points3DDataFrame-init
 points3DDataFrame <- function(coords, df){
 
     # coordinates
@@ -244,3 +246,25 @@ setMethod(
   }
 )
 
+#### SelectRegion ####
+#' @rdname SelectRegion
+setMethod(
+  f = "SelectRegion",
+  signature = "points3DDataFrame",
+  definition = function(object, xmin = -Inf, xmax = Inf,
+                        ymin = -Inf, ymax = Inf, zmin = -Inf, zmax = Inf){
+    # setup
+    if (xmax <= xmin) stop("xmax must be grater than xmin")
+    if (ymax <= ymin) stop("ymax must be grater than ymin")
+    if (zmax <= zmin) stop("zmax must be grater than zmin")
+
+    coords <- GetCoords(object, "matrix")
+
+    # subsetting
+    keep <- coords[, 1] >= xmin & coords[, 1] <= xmax &
+      coords[, 2] >= ymin & coords[, 2] <= ymax &
+      coords[, 3] >= zmin & coords[, 3] <= zmax
+
+    return(object[keep, ])
+  }
+)

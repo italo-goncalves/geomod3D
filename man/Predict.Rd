@@ -46,7 +46,7 @@ variance for each location in \code{target}. The sparse GP returns two
 variances: \code{var_full} represents the total prediction uncertainty while
 \code{var_cor} is the amplitude of variation of the underlying latent
 function. The proportion between the two varies according to the distance
-from the pseudo_inputs.
+from the pseudo_inputs, and is given in the \code{quality} column.
 
 The \code{GP_geomod} object will calculate an indicator and its variance
 for each class at each location, which jointly form a multivariate normal

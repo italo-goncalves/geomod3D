@@ -28,8 +28,10 @@ NULL
 #' learning. Cambridge, Massachusetts: MIT Press; 2006.
 #' doi:10.1142/S0129065704001899.
 #'
-#' @seealso \code{\link{GP-init}}, \code{\link{GP_geomod-class}}
+#' @seealso \code{\link{GP-init}}, \code{\link{SPGP-class}},
+#' \code{\link{GP_geomod-class}}
 #'
+#' @name GP-class
 #' @export GP
 GP <- setClass(
   "GP",
@@ -88,9 +90,9 @@ GP <- setClass(
 #' Note that this implementation uses all the data provided to make predictions,
 #' which may be too memory intensive for large datasets.
 #'
-#' @name GP
+#' @name GP-init
 #'
-#' @seealso \code{\link{GP-class}}
+#' @seealso \code{\link{GP-class}}, \code{\link{SPGP-class}}
 GP <- function(data, model, value,
                mean = NULL, trend = NULL, weights = NULL,
                force.interp = numeric(), reg.v = 1e-9,

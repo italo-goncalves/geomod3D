@@ -33,48 +33,54 @@
 
 # sparse sequential simulation using GPU
 # .sparse_sim_gpu <- function(path, nugget, w, Bi, KMi, maxvar, K_TM,
-#                             d_T, yTR, vTR, discount_noise, Q_T, smooth){
+#                             d_T, yTR, vTR, discount_noise, Q_T, smooth,
+#                             randnum){
 #
-#   w <- vclMatrix(as.numeric(w), length(w), 1)
-#   Bi <- vclMatrix(as.matrix(Bi))
-#   KMi <- vclMatrix(as.matrix(KMi))
+#   # conversion to GPU objects
+#   w <- gpuMatrix(as.numeric(w), length(w), 1, type = "float")
+#   Bi <- gpuMatrix(as.matrix(Bi), type = "float")
+#   KMi <- gpuMatrix(as.matrix(KMi), type = "float")
 #   # K_TM <- gpuMatrix(as.matrix(K_TM))
-#   I <- vclMatrix(diag(1, nrow(Bi), ncol(Bi)))
+#   I <- gpuMatrix(diag(1, nrow(Bi), ncol(Bi)), type = "float")
 #
 #   vplus <- d_T + vTR
 #
 #   ysim <- matrix(rep(NA, length(path)))
 #
+#   # sequential simulation
 #   for (i in seq_along(path)){
-#     k <- vclMatrix(K_TM[path[i], ], ncol(K_TM), 1)
+#     # k <- vclMatrix(K_TM[path[i], ], ncol(K_TM), 1)
+#     k <- matrix(K_TM[path[i], ], ncol(K_TM), 1)
 #
 #     # prediction
-#     mu <- (crossprod(k, (Bi %*% w)))[1]
-#     v <- Q_T[path[i]] - (crossprod(k, ((KMi - Bi) %*% k)))[1] + vplus[path[i]]
+#     mu <- (t(k) %*% (Bi %*% w))[1]
+#     # v <- Q_T[path[i]] - (crossprod(k, ((KMi - Bi) %*% k)))[1] + vplus[path[i]]
+#     v <- (t(k) %*% (Bi %*% k))[1] + vplus[path[i]]
 #     if(v < 0) stop(paste("v =", v))
 #
 #     # simulation
-#     ysim[path[i]] <- rnorm(1, mu, sqrt(v))
+#     ysim[path[i]] <- randnum[path[i]] * sqrt(v) + mu
 #
 #     # update
-#     k <- k / sqrt(d_T[path[i]] + nugget)
+#     k <- k / sqrt(d_T[path[i]] + nugget[path[i]])
 #     tmp <- 1 /(1 + crossprod(k, (Bi %*% k)))
 #     Bi <- Bi %*% (I - k %*% crossprod(k, Bi)) * tmp[1]
-#     k <- k / sqrt(d_T[path[i]] + nugget)
+#     k <- k / sqrt(d_T[path[i]] + nugget[path[i]])
 #     w <- w + ysim[path[i]] * k
-#
-#     rm(k)
 #   }
 #
 #   # smoothing
 #   if (smooth){
-#     ysim <- gpuMatrix(ysim)
-#     dnew <- gpuMatrix(matrix(1 / (maxvar - Q_T + 1e-9)))
-#     tmp <- gpuMatrix(rep(dnew[,], ncol(K_TM)), nrow(K_TM), ncol(K_TM))
-#     K_TM <- gpuMatrix(as.matrix(K_TM))
-#     Bnew <- solve(KMi) + crossprod(K_TM, (tmp * K_TM))
-#     Bnew <- Bnew + identity_matrix(nrow(Bi)) * 1e-6 # regularization
-#     ysim <- K_TM %*% solve(Bnew, crossprod(K_TM,  (ysim * dnew)));
+#     # ysim <- gpuMatrix(ysim)
+#     dnew <- matrix(1 / (maxvar - Q_T + 1e-9))
+#     tmp <- matrix(rep(dnew[,], ncol(K_TM)), nrow(K_TM), ncol(K_TM))
+#     tmp <- gpuMatrix(tmp, type = "float")
+#     K_TM <- gpuMatrix(as.matrix(K_TM), type = "float")
+#     Bnew <- gpuMatrix(solve(KMi)[])
+#     Bnew <- Bnew + t(K_TM) %*% (tmp * K_TM)
+#     Bnew <- Bnew + gpuMatrix(diag(1e-6, nrow(Bi), nrow(Bi)), type = "float") # regularization
+#     ysim <- K_TM %*% gpuMatrix(solve(Bnew, crossprod(K_TM,  (ysim * dnew)))[]);
+#     ysim <- ysim[];
 #   }
 #
 #   # adding noise

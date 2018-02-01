@@ -16,6 +16,7 @@ NULL
 #'
 #' @seealso \code{\link{blocks3DDataFrame-init}}
 #'
+#' @name blocks3DDataFrame-class
 #' @export blocks3DDataFrame
 blocks3DDataFrame <- setClass(
   "blocks3DDataFrame",
@@ -40,8 +41,8 @@ blocks3DDataFrame <- setClass(
 #' @param discretization A length 3 vector indicating in how many parts to
 #' "break" each block during the computations.
 #'
-#' @name blocks3DDataFrame
-blocks3DDataFrame <- function(.Object, corner, number, size,
+#' @name blocks3DDataFrame-init
+blocks3DDataFrame <- function(corner, number, size,
                               discretization = c(4, 4, 4),
                               fields = ".dummy"){
   # dimensions

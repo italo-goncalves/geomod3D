@@ -14,6 +14,7 @@ NULL
 #'
 #' @seealso \code{\link{grid3DDataFrame-init}}
 #'
+#' @name grid3DDataFrame-class
 #' @export grid3DDataFrame
 grid3DDataFrame <- setClass(
   "grid3DDataFrame",
@@ -39,7 +40,7 @@ grid3DDataFrame <- setClass(
 #' actually equally spaced in each direction. A future version will support
 #' rotated grids.
 #'
-#' @name grid3DDataFrame
+#' @name grid3DDataFrame-init
 grid3DDataFrame <- function(gridx, gridy, gridz, fields = ".dummy"){
   # dimensions
   nx <- length(gridx)
@@ -260,3 +261,37 @@ setMethod(
   }
 )
 
+#### SelectRegion ####
+#' @rdname SelectRegion
+setMethod(
+  f = "SelectRegion",
+  signature = "grid3DDataFrame",
+  definition = function(object, xmin = -Inf, xmax = Inf,
+                        ymin = -Inf, ymax = Inf, zmin = -Inf, zmax = Inf){
+    # setup
+    if (xmax <= xmin) stop("xmax must be grater than xmin")
+    if (ymax <= ymin) stop("ymax must be grater than ymin")
+    if (zmax <= zmin) stop("zmax must be grater than zmin")
+
+    coords <- GetCoords(object, "matrix")
+
+    # subsetting
+    keep <- coords[, 1] >= xmin & coords[, 1] <= xmax &
+      coords[, 2] >= ymin & coords[, 2] <= ymax &
+      coords[, 3] >= zmin & coords[, 3] <= zmax
+
+    # rebuilding
+    df <- GetData(object)[keep, ]
+    spacing <- apply(object@bbox, 2, diff) / object@dims
+    coords_sub <- coords[keep, ]
+    gr <- grid3DDataFrame(
+      gridx = seq(min(coords_sub[, 1]), max(coords_sub[, 1]), spacing[1]),
+      gridy = seq(min(coords_sub[, 2]), max(coords_sub[, 2]), spacing[2]),
+      gridz = seq(min(coords_sub[, 3]), max(coords_sub[, 3]), spacing[3]),
+      fields = colnames(df)
+    )
+    gr@data <- df
+
+    return(gr)
+  }
+)

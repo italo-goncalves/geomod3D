@@ -4,6 +4,9 @@ NULL
 #### spatial3DDataFrame class ####
 #' Abstract class for 3D spatial objects
 #'
+#' This class is used to define general methods, and is contained by all of
+#' the package's 3D objects.
+#'
 #' @slot coords A \code{list} containing the coordinates for each data unit.
 #' The contents of the \code{list} vary according to each object:
 #' \itemize{
@@ -19,8 +22,9 @@ NULL
 #' @details This class does not have a constructor method. It is used only to
 #' define methods that are common to all of its subclasses.
 #'
-#' @seealso \code{\link{lines3DDataFrame-init}},
-#' \code{\link{points3DDataFrame-init}}
+#' @seealso \code{\link{lines3DDataFrame-class}},
+#' \code{\link{points3DDataFrame-class}}
+#' @name spatial3DDataFrame-class
 spatial3DDataFrame <- setClass(
   "spatial3DDataFrame",
   slots = c(coords = "list",

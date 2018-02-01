@@ -23,6 +23,7 @@ NULL
 #' @seealso \code{\link{covarianceStructure3D-init}},
 #' \code{\link{CovarianceMatrix}}
 #'
+#' @name covarianceStructure3D-class
 #' @export covarianceStructure3D
 covarianceStructure3D <- setClass(
   "covarianceStructure3D",
@@ -93,9 +94,10 @@ covarianceStructure3D <- setClass(
 #'   \item{\code{cauchy}*}{\deqn{(1 + d^2)^{-p}, p > 0}{(1 + d^2)^(-p), p > 0}}
 #' }
 #'
-#' @name covarianceStructure3D
+#' @name covarianceStructure3D-init
 #'
-#' @seealso \code{\link{covarianceStructure3D-class}}
+#' @seealso \code{\link{covarianceStructure3D-class}},
+#' \code{\link{covarianceModel3D-class}}
 covarianceStructure3D <- function(type = c("gaussian", "exponential",
                                            "spherical", "cubic", "matern1",
                                            "matern2", "cauchy"),

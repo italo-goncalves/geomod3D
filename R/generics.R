@@ -166,6 +166,17 @@ setGeneric("Make3DArray",
            function(object, ...){standardGeneric("Make3DArray")}
 )
 
+#' SelectRegion
+#'
+#' Subsets a 3D object within a box specified by the user.
+#'
+#' @param xmin,xmax,ymin,ymax,zmin,zmax The limits of the box.
+#'
+#' @return A 3D object of the same class as the original.
+setGeneric("SelectRegion",
+           function(object, ...){standardGeneric("SelectRegion")}
+)
+
 #### structural geology ####
 #' Normals to structural planes
 #'
@@ -429,7 +440,7 @@ setGeneric("DrawSection",
 #' variances: \code{var_full} represents the total prediction uncertainty while
 #' \code{var_cor} is the amplitude of variation of the underlying latent
 #' function. The proportion between the two varies according to the distance
-#' from the pseudo_inputs.
+#' from the pseudo_inputs, and is given in the \code{quality} column.
 #'
 #' The \code{GP_geomod} object will calculate an indicator and its variance
 #' for each class at each location, which jointly form a multivariate normal
@@ -514,8 +525,7 @@ setGeneric("Fit",
 
 #' Geostatistical simulation
 #'
-#' Generates a number of equally possible realizations of the modeled random
-#' field.
+#' Generates a number of realizations of the modeled random field.
 #'
 #' @param object A \code{GP} object.
 #' @param target The \code{spatial3DDataFrame} object to receive the prediction.

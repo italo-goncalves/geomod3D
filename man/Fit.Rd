@@ -16,18 +16,17 @@ Fit(object, ...)
   maxrange = T, midrange = F, minrange = F, azimuth = F, dip = F,
   rake = F, power = F, ...)
 
-\S4method{Fit}{GP_geomod}(object, contribution = T, nugget = T,
-  maxrange = T, midrange = F, minrange = F, azimuth = F, dip = F,
-  rake = F, power = F, ...)
+\S4method{Fit}{GP_geomod}(object, maxrange = T, midrange = F,
+  minrange = F, azimuth = F, dip = F, rake = F, power = F, ...)
 
 \S4method{Fit}{SPGP}(object, contribution = F, maxrange = F, midrange = F,
   minrange = F, azimuth = F, dip = F, rake = F, pseudo_inputs = F,
   pseudo_tangents = F, power = F, nugget = F, metric = c("logLik",
   "PLPD", "NRMSE"), ...)
 
-\S4method{Fit}{SPGP_geomod}(object, contribution = T, nugget = T,
-  maxrange = T, midrange = F, minrange = F, azimuth = F, dip = F,
-  rake = F, power = F, pseudo_inputs = F, pseudo_tangents = F, ...)
+\S4method{Fit}{SPGP_geomod}(object, maxrange = T, midrange = F,
+  minrange = F, azimuth = F, dip = F, rake = F, nugget = F,
+  power = F, ...)
 }
 \arguments{
 \item{...}{Arguments passed on to \code{\link{ga}}, such as \code{maxiter},
