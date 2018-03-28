@@ -1,3 +1,14 @@
+## Version 0.0.0.9003
+
+* GP training now uses a dedicated genetic algorithm
+* Bug fixes for Cauchy covariance
+* Covariance matrix calculations implemented as proper internal methods (no more
+`covfun` slots)
+* Removed `weights` argument in `GP` and `SPGP`
+* Added `data` as default value for `pseudo_inputs` in `SPGP`
+* Constant and linear covariances now supported
+* Testing a more stable method for matrix inversions and Cholesky decomposition
+
 ## Version 0.0.0.9002
 
 * Corrected a bug in `SPGP` object initialization the prevented the use of

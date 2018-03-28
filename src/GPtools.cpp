@@ -11,7 +11,8 @@ NumericVector sparse_sim(IntegerVector path, NumericVector nugget,
                          NumericMatrix K_, NumericVector d_,
                          NumericVector yTR, NumericVector vTR,
                          bool discount_noise, NumericVector Q_,
-                         bool smooth, NumericVector randnum){
+                         bool smooth, NumericVector randnum,
+                         double reg = 1e-6){
 
   arma::mat K = arma::mat(K_.begin(), K_.nrow(), K_.ncol(), false);
   arma::mat Bi = arma::mat(Bi_.begin(), Bi_.nrow(), Bi_.ncol(), false);
@@ -36,6 +37,7 @@ NumericVector sparse_sim(IntegerVector path, NumericVector nugget,
     double mu = arma::as_scalar(sum(k % (Bi * w))); //+ yTR(path(i));
     // double v = maxvar - arma::as_scalar(sum(k % ((KMi - Bi) * k))) + vplus(path(i));
     double v = Q(path(i)) - arma::as_scalar(sum(k % ((KMi - Bi) * k))) + vplus(path(i));
+    if (v < 0) v = 0; // to avoid rounding errors
 
     // simulation
     // ysim(path(i)) = rnorm(1, mu, sqrt(v))(0);
@@ -51,9 +53,9 @@ NumericVector sparse_sim(IntegerVector path, NumericVector nugget,
 
   // smoothing (correction for varying quality of the sparse approximation)
   if(smooth){
-    arma::mat dnew = 1 / (mvar - Q + 1e-9);
+    arma::mat dnew = 1 / (mvar - Q + reg);
     arma::mat Bnew = arma::inv(KMi) + K.t() * (arma::repmat(dnew, 1, K.n_cols) % K);
-    Bnew = Bnew + arma::diagmat(arma::ones(K.n_cols) * 1e-6); // regularization
+    Bnew = Bnew + arma::diagmat(arma::ones(K.n_cols) * reg); // regularization
     ysim = K * solve(Bnew, K.t() * (ysim % dnew));
   }
 

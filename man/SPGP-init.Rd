@@ -5,10 +5,9 @@
 \alias{SPGP}
 \title{Sparse Gaussian Process}
 \usage{
-SPGP(data, model, value, mean = NULL, trend = NULL, pseudo_inputs,
-  weights = NULL, force.interp = numeric(), reg.v = 1e-09,
-  tangents = NULL, reg.t = 1e-12, pseudo_tangents = NULL,
-  variational = T)
+SPGP(data, model, value, mean = NULL, trend = NULL, pseudo_inputs = data,
+  force.interp = numeric(), reg.v = 1e-09, tangents = NULL,
+  reg.t = 1e-12, pseudo_tangents = tangents, variational = T)
 }
 \arguments{
 \item{data}{A \code{spatial3DDataFrame} object containing the data one
@@ -27,9 +26,6 @@ the column does not contain missing values.}
 \item{pseudo_inputs}{The desired number of pseudo-inputs (whose coordinates
 will be sampled from the data), a matrix or data frame with their
 coordinates, or a 3D object.}
-
-\item{weights}{The importance of each data point in the model (a vector with
-values between 0 and 1).}
 
 \item{force.interp}{Indices of points that must be interpolated exactly.}
 

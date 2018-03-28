@@ -3,13 +3,11 @@
 #'
 #' @import rgl
 #' @import Matrix
-#' @import GA
 #' @importFrom dplyr arrange_
 #' @importFrom tidyr spread_
 #' @importFrom scales rescale
 #' @importFrom scales colour_ramp
 #' @importFrom Deriv Deriv
-#' @importFrom binaryLogic as.binary
 #' @useDynLib geomod3D
 #' @importFrom Rcpp evalCpp
 #' @exportPattern "^[[:alpha:]]+"

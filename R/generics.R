@@ -65,6 +65,34 @@ setGeneric("BoundingBox",
            function(object, ...){standardGeneric("BoundingBox")}
 )
 
+#' Covariance model variance
+#'
+#' Returns a covariance model's prior variance at the specified locations.
+#'
+#' @param object A \code{covarianceModel3Dobject}.
+#' @param target A 3D data frame object with the target locations.
+#'
+#' @return A vector containing the variance at the specified locations.
+#' @export
+setGeneric("GetPriorVariance",
+           function(object, ...){standardGeneric("GetPriorVariance")}
+)
+
+#' Non stationary model parameters
+#'
+#' Returns a non stationary covariance model's parameters at the specified
+#' locations.
+#'
+#' @param object A \code{covarianceModel3Dobject}.
+#' @param target A 3D data frame object with the target locations.
+#'
+#' @return An object with the same class as \code{target}, containing the
+#' parameters (contribution, ranges, etc.).
+#' @export
+setGeneric("GetNonStatParams",
+           function(object, ...){standardGeneric("GetNonStatParams")}
+)
+
 #### specialized functions ####
 #' Conversion to point cloud
 #'
@@ -576,4 +604,16 @@ setGeneric("Simulate",
 #' }
 setGeneric("Xval",
            function(object, ...){standardGeneric("Xval")}
+)
+
+
+#### Internals ####
+setGeneric(".CalcCovMat",
+           function(object, ...){standardGeneric(".CalcCovMat")}
+)
+setGeneric(".CalcCovMat_d1",
+           function(object, ...){standardGeneric(".CalcCovMat_d1")}
+)
+setGeneric(".CalcCovMat_d2",
+           function(object, ...){standardGeneric(".CalcCovMat_d2")}
 )

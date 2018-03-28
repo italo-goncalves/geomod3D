@@ -19,9 +19,6 @@ Representation of a spatial continuity model.
 
 \item{\code{structures}}{A \code{list} with one or more
 \code{covarianceStructure3D} objects}
-
-\item{\code{total.var}}{The total variance of the covariance structures,
-excluding the nugget effect.}
 }}
 
 \seealso{

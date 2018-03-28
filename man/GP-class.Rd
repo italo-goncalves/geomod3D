@@ -5,7 +5,7 @@
 \alias{GP}
 \title{Gaussian Process}
 \usage{
-GP(data, model, value, mean = NULL, trend = NULL, weights = NULL,
+GP(data, model, value, mean = NULL, trend = NULL,
   force.interp = numeric(), reg.v = 1e-09, tangents = NULL,
   reg.t = 1e-12, nugget.t = 0)
 }

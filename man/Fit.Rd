@@ -14,15 +14,18 @@ Fit(object, ...)
 
 \S4method{Fit}{GP}(object, contribution = T, nugget = T, nugget.t = F,
   maxrange = T, midrange = F, minrange = F, azimuth = F, dip = F,
-  rake = F, power = F, ...)
+  rake = F, power = F, contribution.ns = F, maxrange.ns = F,
+  midrange.ns = F, minrange.ns = F, azimuth.ns = F, dip.ns = F,
+  rake.ns = F, ...)
 
 \S4method{Fit}{GP_geomod}(object, maxrange = T, midrange = F,
   minrange = F, azimuth = F, dip = F, rake = F, power = F, ...)
 
-\S4method{Fit}{SPGP}(object, contribution = F, maxrange = F, midrange = F,
-  minrange = F, azimuth = F, dip = F, rake = F, pseudo_inputs = F,
-  pseudo_tangents = F, power = F, nugget = F, metric = c("logLik",
-  "PLPD", "NRMSE"), ...)
+\S4method{Fit}{SPGP}(object, contribution = T, nugget = T, nugget.t = F,
+  maxrange = T, midrange = F, minrange = F, azimuth = F, dip = F,
+  rake = F, power = F, contribution.ns = F, maxrange.ns = F,
+  midrange.ns = F, minrange.ns = F, azimuth.ns = F, dip.ns = F,
+  rake.ns = F, metric = c("logLik", "PLPD", "NRMSE"), ...)
 
 \S4method{Fit}{SPGP_geomod}(object, maxrange = T, midrange = F,
   minrange = F, azimuth = F, dip = F, rake = F, nugget = F,
@@ -45,12 +48,12 @@ Fit(object, ...)
 \item{power}{Optimize on the power parameter (not relevant for all
 covariances)?}
 
+\item{metric}{Which metric to optimize?}
+
 \item{pseudo_inputs}{Optimize on the pseudo-inputs' locations?}
 
 \item{pseudo_tangents}{Optimize on the pseudo-inputs' locations for
 derivative data?}
-
-\item{metric}{Which metric to optimize?}
 }
 \value{
 A \code{GP} object similar to \code{object}, with optimized

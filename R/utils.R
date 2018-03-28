@@ -100,41 +100,80 @@
 }
 
 #### genetic algorithm ####
-.decodeString <- function(string, bits){
-  # Converts a binary string into a vector of integers. The 'bits' argument
-  # is an integer vector containing the length of each segment.
-  f <- unlist(sapply(seq_along(bits), function(i) rep(i, bits[i])))
+# .decodeString <- function(string, bits){
+#   # Converts a binary string into a vector of integers. The 'bits' argument
+#   # is an integer vector containing the length of each segment.
+#   f <- unlist(sapply(seq_along(bits), function(i) rep(i, bits[i])))
+#
+#   sapply(split(string, f), function(el){
+#     l <- as.logical(el)
+#     b <- binaryLogic::as.binary(l, logic = T)
+#     as.integer(b)
+#   })
+# }
+#
+# .selectNofK <- function(string, K){
+#   # Selects a subset of  from a 1:K list. 'string' is an integer
+#   # vector containing the size of the "jumps" to be made. The function
+#   # will loop over the list as necessary.
+#   if (any(string == 0))
+#     stop("'string' argument must contain positive integers")
+#
+#   if (length(string) == K)
+#     return(1:K)
+#
+#   keep <- rep(F, K)
+#   pos <- 0
+#   for (i in seq_along(string)){
+#     pos <- pos + string[i]
+#     if (pos > K)
+#       pos <- 1
+#     if (pos %in% which(keep)){
+#       if (sum(which(!keep) > pos) > 0)
+#         pos <- which(!keep)[which(!keep) > pos][1]
+#       else
+#         pos <- max(which(!keep))
+#     }
+#     keep[pos] <- T
+#   }
+#   return(which(keep))
+# }
 
-  sapply(split(string, f), function(el){
-    l <- as.logical(el)
-    b <- binaryLogic::as.binary(l, logic = T)
-    as.integer(b)
-  })
+#### auxiliary functions ####
+# sigmoid
+.sig <- function(x) 1 / (1 + exp(-x))
+.sigd1 <- function(x) sig(x) * (1 - sig(x))
+.sigd2 <- function(x) sigd1(x) * (1 - 2 * sig(x))
+.logit <- function(x) log(x / (1 - x))
+
+.softmax <- function(x, complete = F){
+  if (complete) x <- c(x, -sum(x))
+  exp(x) / sum(exp(x))
 }
 
-.selectNofK <- function(string, K){
-  # Selects a subset of  from a 1:K list. 'string' is an integer
-  # vector containing the size of the "jumps" to be made. The function
-  # will loop over the list as necessary.
-  if (any(string == 0))
-    stop("'string' argument must contain positive integers")
+#### linear algebra ####
+.safeInv <- function(M, reg = 1e-6){
+  tmp <- max(M)
+  M <- M / tmp
+  M <- 0.5 * M + 0.5 * t(M) + diag(reg, nrow(M), ncol(M))
+  Minv <- solve(M) / tmp
+  Minv
+}
 
-  if (length(string) == K)
-    return(1:K)
+.safeChol <- function(M, reg = 1e-6){
+  tmp <- max(M)
+  M <- M / tmp
+  M <- 0.5 * M + 0.5 * t(M) + diag(reg, nrow(M), ncol(M))
+  L <- t(chol(M)) * sqrt(tmp)
+  L
+}
 
-  keep <- rep(F, K)
-  pos <- 0
-  for (i in seq_along(string)){
-    pos <- pos + string[i]
-    if (pos > K)
-      pos <- 1
-    if (pos %in% which(keep)){
-      if (sum(which(!keep) > pos) > 0)
-        pos <- which(!keep)[which(!keep) > pos][1]
-      else
-        pos <- max(which(!keep))
-    }
-    keep[pos] <- T
-  }
-  return(which(keep))
+.safeSolveChol <- function(L, b, reg = 1e-6){
+  L <- as(L, "dgeMatrix")
+  # L <- as(L, "dtrMatrix")
+  tmp <- max(L)
+  L <- L / tmp
+  L <- L + diag(reg, nrow(L), ncol(L))
+  x <- solve(L, b) / tmp
+  x
 }

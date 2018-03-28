@@ -25,7 +25,9 @@ Collate:
     'SPGP_geomod.R'
     'grid3DDataFrame.R'
     'blocks3DDataFrame.R'
+    'covarianceStructure3DNonStat.R'
     'data.R'
+    'genetic_training.R'
     'lines3DDataFrame.R'
     'geostat3D.R'
 RoxygenNote: 6.0.1

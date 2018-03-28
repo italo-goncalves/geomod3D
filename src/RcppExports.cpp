@@ -210,8 +210,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sparse_sim
-NumericVector sparse_sim(IntegerVector path, NumericVector nugget, NumericVector w_, NumericMatrix Bi_, NumericMatrix KMi_, NumericVector maxvar, NumericMatrix K_, NumericVector d_, NumericVector yTR, NumericVector vTR, bool discount_noise, NumericVector Q_, bool smooth, NumericVector randnum);
-RcppExport SEXP _geomod3D_sparse_sim(SEXP pathSEXP, SEXP nuggetSEXP, SEXP w_SEXP, SEXP Bi_SEXP, SEXP KMi_SEXP, SEXP maxvarSEXP, SEXP K_SEXP, SEXP d_SEXP, SEXP yTRSEXP, SEXP vTRSEXP, SEXP discount_noiseSEXP, SEXP Q_SEXP, SEXP smoothSEXP, SEXP randnumSEXP) {
+NumericVector sparse_sim(IntegerVector path, NumericVector nugget, NumericVector w_, NumericMatrix Bi_, NumericMatrix KMi_, NumericVector maxvar, NumericMatrix K_, NumericVector d_, NumericVector yTR, NumericVector vTR, bool discount_noise, NumericVector Q_, bool smooth, NumericVector randnum, double reg);
+RcppExport SEXP _geomod3D_sparse_sim(SEXP pathSEXP, SEXP nuggetSEXP, SEXP w_SEXP, SEXP Bi_SEXP, SEXP KMi_SEXP, SEXP maxvarSEXP, SEXP K_SEXP, SEXP d_SEXP, SEXP yTRSEXP, SEXP vTRSEXP, SEXP discount_noiseSEXP, SEXP Q_SEXP, SEXP smoothSEXP, SEXP randnumSEXP, SEXP regSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -229,7 +229,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type Q_(Q_SEXP);
     Rcpp::traits::input_parameter< bool >::type smooth(smoothSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type randnum(randnumSEXP);
-    rcpp_result_gen = Rcpp::wrap(sparse_sim(path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth, randnum));
+    Rcpp::traits::input_parameter< double >::type reg(regSEXP);
+    rcpp_result_gen = Rcpp::wrap(sparse_sim(path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth, randnum, reg));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -265,7 +266,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_geomod3D_covd2_cauchy", (DL_FUNC) &_geomod3D_covd2_cauchy, 6},
     {"_geomod3D_anisotropyC", (DL_FUNC) &_geomod3D_anisotropyC, 6},
     {"_geomod3D_cov_ns", (DL_FUNC) &_geomod3D_cov_ns, 18},
-    {"_geomod3D_sparse_sim", (DL_FUNC) &_geomod3D_sparse_sim, 14},
+    {"_geomod3D_sparse_sim", (DL_FUNC) &_geomod3D_sparse_sim, 15},
     {"_geomod3D_SPGP_CV", (DL_FUNC) &_geomod3D_SPGP_CV, 7},
     {NULL, NULL, 0}
 };

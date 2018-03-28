@@ -5,7 +5,7 @@
 \alias{GP}
 \title{Gaussian Process}
 \usage{
-GP(data, model, value, mean = NULL, trend = NULL, weights = NULL,
+GP(data, model, value, mean = NULL, trend = NULL,
   force.interp = numeric(), reg.v = 1e-09, tangents = NULL,
   reg.t = 1e-12, nugget.t = 0)
 }
@@ -22,9 +22,6 @@ the column does not contain missing values.}
 
 \item{trend}{The model's trend component. A formula in character format.}
 
-\item{weights}{The importance of each data point in the model (a vector with
-values between 0 and 1)}
-
 \item{force.interp}{Indices of points that must be interpolated exactly.}
 
 \item{reg.v}{Regularization to improve stability. A single value or a vector
@@ -36,6 +33,9 @@ method.}
 
 \item{reg.t}{Regularization for structural data. A single value or a vector
 with length matching the number of structural data.}
+
+\item{weights}{The importance of each data point in the model (a vector with
+values between 0 and 1)}
 }
 \description{
 Implementation of the Gaussian Process model for 3D spatial interpolation.

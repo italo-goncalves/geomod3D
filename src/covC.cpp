@@ -443,7 +443,7 @@ NumericMatrix anisotropyC(double maxrange, double midrange, double minrange,
   return(wrap(A));
 }
 
-// [[Rcpp::export(cov_ns)]]
+// [[Rcpp::export(.cov_ns)]]
 NumericMatrix cov_ns(NumericMatrix x, NumericMatrix y,
                      NumericVector x_sd, NumericVector y_sd,
                      NumericVector x_maxrange, NumericVector y_maxrange,

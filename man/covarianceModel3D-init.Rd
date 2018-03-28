@@ -10,14 +10,19 @@ covarianceModel3D(nugget, structures, nugget.dir = 0)
 \arguments{
 \item{nugget}{The nugget effect or noise variance.}
 
-\item{structures}{Objects of the \code{covarianceStructure3D} class
-describing the desired covariance structure. A single object or multiple,
-concatenated objects.}
+\item{structures}{An object of the \code{covarianceStructure3D} or
+\code{covarianceStructure3DNonStat} class describing the desired covariance
+structure.}
 
 \item{nugget.dir}{The nugget effect for directional data.}
 }
 \description{
 Representation of a spatial continuity model.
+}
+\details{
+Stationary covariance accepts multiple structures, which can be
+concatenated in a list. Non stationarity requires a single
+\code{covarianceStructure3DNonStat} object.
 }
 \seealso{
 \code{\link{covarianceModel3D-class}},

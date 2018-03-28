@@ -348,16 +348,16 @@ setMethod(
     }
 
     # optimization
-    opt <- ga(
-      type = "real-valued",
+    opt <- GeneticTrainingReal(
       fitness = function(x) makeGP(x, F),
-      min = opt_min,
-      max = opt_max,
-      suggestions = xstart, ...
+      minval = opt_min,
+      maxval = opt_max,
+      start = xstart,
+      ...
     )
 
     # update
-    sol <- opt@solution
+    sol <- opt$bestsol
     return(makeGP(sol, T))
   }
 )

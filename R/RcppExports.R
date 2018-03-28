@@ -49,12 +49,12 @@
     .Call('_geomod3D_anisotropyC', PACKAGE = 'geomod3D', maxrange, midrange, minrange, azimuth, dip, rake)
 }
 
-cov_ns <- function(x, y, x_sd, y_sd, x_maxrange, y_maxrange, x_midrange, y_midrange, x_minrange, y_minrange, x_azimuth, y_azimuth, x_dip, y_dip, x_rake, y_rake, type, p = 1) {
+.cov_ns <- function(x, y, x_sd, y_sd, x_maxrange, y_maxrange, x_midrange, y_midrange, x_minrange, y_minrange, x_azimuth, y_azimuth, x_dip, y_dip, x_rake, y_rake, type, p = 1) {
     .Call('_geomod3D_cov_ns', PACKAGE = 'geomod3D', x, y, x_sd, y_sd, x_maxrange, y_maxrange, x_midrange, y_midrange, x_minrange, y_minrange, x_azimuth, y_azimuth, x_dip, y_dip, x_rake, y_rake, type, p)
 }
 
-.sparse_sim <- function(path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth, randnum) {
-    .Call('_geomod3D_sparse_sim', PACKAGE = 'geomod3D', path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth, randnum)
+.sparse_sim <- function(path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth, randnum, reg = 1e-6) {
+    .Call('_geomod3D_sparse_sim', PACKAGE = 'geomod3D', path, nugget, w_, Bi_, KMi_, maxvar, K_, d_, yTR, vTR, discount_noise, Q_, smooth, randnum, reg)
 }
 
 .SPGP_CV <- function(w_, Bi_, y_, K_, d_, yTR, vTR) {

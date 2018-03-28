@@ -5,10 +5,9 @@
 \alias{SPGP}
 \title{Sparse Gaussian Process}
 \usage{
-SPGP(data, model, value, mean = NULL, trend = NULL, pseudo_inputs,
-  weights = NULL, force.interp = numeric(), reg.v = 1e-09,
-  tangents = NULL, reg.t = 1e-12, pseudo_tangents = NULL,
-  variational = T)
+SPGP(data, model, value, mean = NULL, trend = NULL, pseudo_inputs = data,
+  force.interp = numeric(), reg.v = 1e-09, tangents = NULL,
+  reg.t = 1e-12, pseudo_tangents = tangents, variational = T)
 }
 \description{
 Implementation of the Sparse Gaussian Process model for 3D spatial

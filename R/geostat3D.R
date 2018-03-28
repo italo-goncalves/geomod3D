@@ -123,7 +123,7 @@ setMethod(
     v <- GetCoords(y, as = "matrix")
     K <- matrix(0, Nrows, Ncols)
     for (md in model@structures)
-      K <- K + md@covfun(u, v)
+      K <- K + .CalcCovMat(md, u, v)
     return(K)
 
   }
@@ -146,7 +146,8 @@ setMethod(
     # covariance matrix
     K <- matrix(0, Ndata, Ntang)
     for (md in model@structures)
-      K <- K + md@covd1(xcoords, tcoords, vec)
+      # K <- K + md@covd1(xcoords, tcoords, vec)
+      K <- K +  .CalcCovMat_d1(md, xcoords, tcoords, vec)
     return(K)
 
   }
@@ -179,7 +180,8 @@ setMethod(
     # covariance matrix
     K <- matrix(0, Ntang1, Ntang2)
     for (md in model@structures) {
-      K <- K + md@covd2(tcoords1, tcoords2, dirvecs1, dirvecs2)
+      # K <- K + md@covd2(tcoords1, tcoords2, dirvecs1, dirvecs2)
+      K <- K + .CalcCovMat_d2(md, tcoords1, tcoords2, dirvecs1, dirvecs2)
     }
     return(K)
 
@@ -203,7 +205,8 @@ setMethod(
     v <- GetCoords(yp, as = "matrix")
     K <- matrix(0, Nrows, Ncols * Ndisc)
     for (md in model@structures)
-      K <- K + md@covfun(u, v)
+      K <- K + .CalcCovMat(md, u, v)
+      # K <- K + md@covfun(u, v)
 
     # averaging
     K <- t(rowsum(t(K), rep(seq(Ncols), each = Ndisc))) / Ndisc
@@ -240,7 +243,7 @@ setMethod(
     v <- GetCoords(yp, as = "matrix")
     K <- matrix(0, Nrows * Ndiscx, Ncols * Ndiscy)
     for (md in model@structures)
-      K <- K + md@covfun(u, v)
+      K <- K + .CalcCovMat(md, u, v)
 
     # averaging
     K <- t(rowsum(t(K), rep(seq(Ncols), each = Ndiscy))) / Ndiscy
@@ -298,9 +301,4 @@ setMethod(
   }
 )
 
-#### non-stationary covariance matrix ####
-#' #' @rdname CovarianceMatrix
-#' setMethod(
-#'   f = "CovarianceMatrixNonStat",
-#'   signature = c("points3DDataFrame", "points3DDataFrame")
-#' )
+
