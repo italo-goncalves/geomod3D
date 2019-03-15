@@ -1,5 +1,12 @@
 # geomod3D
-Implicit 3D geological modeling and geostatistics
+Implicit 3D geological modeling and geostatistics.
+
+Development of this project has been suspended indefinitely.
+We are currently working on geoML (<https://github.com/italo-goncalves/geoML>)
+in Python in order to make better use of the GPU. All the functionality
+available here should be present there, though most likely in a new form.
+
+---
 
 Welcome to the geomod3D package. This is a project to develop a R package with 
 tools for 3D implicit modeling of geological bodies and general manipulation of 
@@ -25,3 +32,4 @@ TODO list:
 * Add infrastructure for multivariate modeling
 * Implement GPU computations
 * Implement package testing
+
